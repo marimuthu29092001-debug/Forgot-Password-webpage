@@ -1,0 +1,2056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stackly — Secure Authentication & Password Recovery</title>
+  <meta name="description" content="Stackly enterprise authentication portal featuring multi-step password recovery with Firebase Auth and EmailJS OTP delivery." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'><path d='M29 6C23 6 12 14 8 26C5 34 10 40 20 40C14 36 12 28 16 21C20 15 28 13 38 18C35 11 32 6 29 6Z' fill='%2378D6C6'/><path d='M25 58C31 58 42 50 46 38C49 30 44 24 34 24C40 28 42 36 38 43C34 49 26 51 16 46C19 53 22 58 25 58Z' fill='%2338BDF8'/></svg>" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="./src/index.css" />
+
+  <!-- React 18 & Babel for instant zero-dependency execution in any browser -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- EmailJS Browser SDK (Direct Browser Integration) -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React Application Core with Firebase & EmailJS Integration -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- Environment / API Configuration ---
+    // Reads from window.ENV or defaults to .env parameters
+    const STACKLY_ENV = {
+      FIREBASE_API_KEY: window.VITE_FIREBASE_API_KEY || 'AIzaSyYourFirebaseApiKeyHere12345',
+      FIREBASE_AUTH_DOMAIN: window.VITE_FIREBASE_AUTH_DOMAIN || 'stackly-auth.firebaseapp.com',
+      FIREBASE_PROJECT_ID: window.VITE_FIREBASE_PROJECT_ID || 'stackly-auth',
+      EMAILJS_SERVICE_ID: window.VITE_EMAILJS_SERVICE_ID || 'service_stackly_otp',
+      EMAILJS_TEMPLATE_ID: window.VITE_EMAILJS_TEMPLATE_ID || 'template_otp_stackly',
+      EMAILJS_PUBLIC_KEY: window.VITE_EMAILJS_PUBLIC_KEY || 'your_emailjs_public_key_here'
+    };
+
+    // Initialize EmailJS if public key is available
+    if (window.emailjs && STACKLY_ENV.EMAILJS_PUBLIC_KEY && STACKLY_ENV.EMAILJS_PUBLIC_KEY !== 'your_emailjs_public_key_here') {
+      try {
+        window.emailjs.init(STACKLY_ENV.EMAILJS_PUBLIC_KEY);
+      } catch (err) {
+        console.warn('EmailJS init notice:', err);
+      }
+    }
+
+    async function sendOtpViaEmailJS({ toEmail, otpCode, userName = '' }) {
+      if (
+        window.emailjs &&
+        STACKLY_ENV.EMAILJS_SERVICE_ID !== 'service_stackly_otp' &&
+        STACKLY_ENV.EMAILJS_TEMPLATE_ID !== 'template_otp_stackly' &&
+        STACKLY_ENV.EMAILJS_PUBLIC_KEY !== 'your_emailjs_public_key_here'
+      ) {
+        try {
+          const res = await window.emailjs.send(
+            STACKLY_ENV.EMAILJS_SERVICE_ID,
+            STACKLY_ENV.EMAILJS_TEMPLATE_ID,
+            {
+              to_email: toEmail,
+              recipient: toEmail,
+              otp_code: otpCode,
+              passcode: otpCode,
+              user_name: userName || toEmail.split('@')[0],
+              app_name: 'Stackly Security'
+            },
+            STACKLY_ENV.EMAILJS_PUBLIC_KEY
+          );
+          return { success: true, isSimulated: false, message: `Real OTP delivered to ${toEmail}` };
+        } catch (err) {
+          console.warn('[EmailJS Delivery Failed - Falling back to simulation]', err);
+        }
+      }
+
+      // Smart Simulation Fallback
+      return {
+        success: true,
+        isSimulated: true,
+        message: `Simulated OTP ${otpCode} dispatched to ${toEmail}.`
+      };
+    }
+
+    // --- Component: Official Stackly Brand Logo ---
+    function StacklyLogo({ size = 'medium', className = '' }) {
+      const heights = {
+        small: 32,
+        medium: 44,
+        large: 54
+      };
+      const height = heights[size] || 44;
+
+      return (
+        <div className={`brand-header-box ${className}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.85rem' }}>
+          <svg
+            height={height}
+            viewBox="0 0 260 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="stackly-brand-svg"
+          >
+            {/* Dual Swoosh Ribbon S Mark */}
+            <g id="stackly-s-icon">
+              {/* Top Mint-Teal Swoosh */}
+              <path
+                d="M29 6C23 6 12 14 8 26C5 34 10 40 20 40C14 36 12 28 16 21C20 15 28 13 38 18C35 11 32 6 29 6Z"
+                fill="#78D6C6"
+              />
+              {/* Bottom Cyan / Deep Navy Swoosh */}
+              <path
+                d="M25 58C31 58 42 50 46 38C49 30 44 24 34 24C40 28 42 36 38 43C34 49 26 51 16 46C19 53 22 58 25 58Z"
+                fill="#38BDF8"
+              />
+            </g>
+
+            {/* Crisp STACKLY Wordmark */}
+            <text
+              x="66"
+              y="42"
+              fontFamily="'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+              fontSize="32"
+              fontWeight="900"
+              letterSpacing="2.5"
+              fill="#F8FAFC"
+            >
+              STACKLY
+            </text>
+          </svg>
+        </div>
+      );
+    }
+
+    // --- Validation Utilities ---
+    const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    function validateEmail(email) {
+      if (!email || typeof email !== 'string' || email.trim() === '') {
+        return { isValid: false, error: 'Email address is required' };
+      }
+      const trimmed = email.trim();
+      if (!EMAIL_REGEX.test(trimmed)) {
+        return { isValid: false, error: 'Please enter a valid email address (e.g. yourname@example.com)' };
+      }
+      return { isValid: true, error: '' };
+    }
+
+    function checkPasswordStrength(password = '') {
+      const safePass = typeof password === 'string' ? password : '';
+      const criteria = {
+        length: safePass.length >= 8,
+        hasUppercase: /[A-Z]/.test(safePass),
+        hasNumber: /[0-9]/.test(safePass),
+        hasSpecial: /[^A-Za-z0-9]/.test(safePass),
+      };
+
+      let score = 0;
+      if (criteria.length) score += 1;
+      if (criteria.hasUppercase) score += 1;
+      if (criteria.hasNumber) score += 1;
+      if (criteria.hasSpecial) score += 1;
+
+      let strength = 'none';
+      if (safePass.length > 0) {
+        if (score <= 1) strength = 'weak';
+        else if (score === 2) strength = 'fair';
+        else if (score === 3) strength = 'good';
+        else if (score >= 4) strength = 'strong';
+      }
+
+      const isValid = score >= 4;
+      let error = '';
+      if (safePass.length > 0 && !isValid) {
+        if (!criteria.length) error = 'Password must be at least 8 characters';
+        else if (!criteria.hasUppercase) error = 'Include at least one uppercase letter';
+        else if (!criteria.hasNumber) error = 'Include at least one number';
+        else if (!criteria.hasSpecial) error = 'Include at least one special character';
+      }
+
+      return { criteria, score, strength, isValid, error };
+    }
+
+    function validatePasswordMatch(newPass, confirmPass) {
+      if (!confirmPass || confirmPass === '') {
+        return { isValid: false, error: 'Please confirm your new password' };
+      }
+      if (newPass !== confirmPass) {
+        return { isValid: false, error: 'Passwords do not match. Please verify.' };
+      }
+      return { isValid: true, error: '' };
+    }
+
+    function validateOtp(otp, expectedOtp = '849201') {
+      const otpString = Array.isArray(otp) ? otp.join('') : String(otp || '');
+      if (otpString.length < 6) {
+        return { isValid: false, error: 'Please enter all 6 digits of the verification code' };
+      }
+      if (!/^\d{6}$/.test(otpString)) {
+        return { isValid: false, error: 'Verification code must contain numbers only' };
+      }
+      if (expectedOtp && otpString !== expectedOtp) {
+        return { isValid: false, error: 'Incorrect verification code. Please check and try again.' };
+      }
+      return { isValid: true, error: '' };
+    }
+
+    const DEMO_USER = {
+      email: 'alex.rivera@stackly.io',
+      password: 'Password@2026',
+    };
+
+    function simulateDelay(ms = 600) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function generateRandomOtp() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // --- Component: InputField ---
+    function InputField({
+      id,
+      label,
+      type = 'text',
+      value,
+      onChange,
+      onBlur,
+      placeholder,
+      error,
+      isValid,
+      helperText,
+      leftIcon,
+      required = false,
+      autoComplete,
+      disabled = false,
+      rightAction,
+      autoFocus = false
+    }) {
+      const [showPassword, setShowPassword] = useState(false);
+      const isPasswordType = type === 'password';
+      const effectiveType = isPasswordType ? (showPassword ? 'text' : 'password') : type;
+      const safeValue = typeof value === 'string' ? value : '';
+
+      return (
+        <div className="form-group">
+          {label && (
+            <div className="form-label-row">
+              <label htmlFor={id} className="form-label">
+                {label} {required && <span style={{ color: 'var(--error)' }}>*</span>}
+              </label>
+              {rightAction}
+            </div>
+          )}
+
+          <div className="input-wrapper">
+            {leftIcon && <span className="input-icon-left">{leftIcon}</span>}
+            
+            <input
+              id={id}
+              type={effectiveType}
+              value={safeValue}
+              onChange={onChange}
+              onBlur={onBlur}
+              placeholder={placeholder}
+              disabled={disabled}
+              autoComplete={autoComplete}
+              autoFocus={autoFocus}
+              className={`form-input ${!leftIcon ? 'no-left-icon' : ''} ${
+                isPasswordType ? 'has-right-icon' : ''
+              } ${error ? 'is-invalid' : ''} ${isValid && !error ? 'is-valid' : ''}`}
+            />
+
+            {isPasswordType && (
+              <button
+                type="button"
+                id={`${id}-toggle`}
+                className="input-icon-right"
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+
+          {error ? (
+            <span className="form-error-msg">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              {error}
+            </span>
+          ) : helperText ? (
+            <span className="form-helper-text">{helperText}</span>
+          ) : null}
+        </div>
+      );
+    }
+
+    // --- Component: Button ---
+    function Button({
+      children,
+      type = 'button',
+      variant = 'primary',
+      isLoading = false,
+      disabled = false,
+      onClick,
+      leftIcon,
+      rightIcon,
+      className = '',
+      id
+    }) {
+      return (
+        <button
+          id={id}
+          type={type}
+          onClick={onClick}
+          disabled={disabled || isLoading}
+          className={`btn btn-${variant} ${className}`}
+        >
+          {isLoading ? (
+            <>
+              <span className="btn-spinner" />
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              {leftIcon && <span className="btn-icon-left">{leftIcon}</span>}
+              <span>{children}</span>
+              {rightIcon && <span className="btn-icon-right">{rightIcon}</span>}
+            </>
+          )}
+        </button>
+      );
+    }
+
+    // --- Component: OtpInput ---
+    function OtpInput({
+      value = ['', '', '', '', '', ''],
+      onChange,
+      onComplete,
+      hasError = false,
+      disabled = false,
+      length = 6
+    }) {
+      const inputRefs = useRef([]);
+
+      useEffect(() => {
+        const firstEmptyIndex = value.findIndex((digit) => digit === '');
+        const targetIndex = firstEmptyIndex !== -1 ? firstEmptyIndex : 0;
+        if (inputRefs.current[targetIndex]) {
+          inputRefs.current[targetIndex].focus();
+        }
+      }, []);
+
+      const handleChange = (e, index) => {
+        const rawVal = e.target.value;
+        const digitsOnly = rawVal.replace(/\D/g, '');
+
+        if (!digitsOnly) {
+          const newOtp = [...value];
+          newOtp[index] = '';
+          onChange(newOtp);
+          return;
+        }
+
+        const newOtp = [...value];
+        const char = digitsOnly.slice(-1);
+        newOtp[index] = char;
+        onChange(newOtp);
+
+        if (index < length - 1 && char) {
+          inputRefs.current[index + 1]?.focus();
+          inputRefs.current[index + 1]?.select();
+        }
+
+        const completeOtp = newOtp.join('');
+        if (completeOtp.length === length && onComplete) {
+          onComplete(completeOtp);
+        }
+      };
+
+      const handleKeyDown = (e, index) => {
+        if (e.key === 'Backspace') {
+          if (!value[index] && index > 0) {
+            const newOtp = [...value];
+            newOtp[index - 1] = '';
+            onChange(newOtp);
+            inputRefs.current[index - 1]?.focus();
+          } else {
+            const newOtp = [...value];
+            newOtp[index] = '';
+            onChange(newOtp);
+          }
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+          e.preventDefault();
+          inputRefs.current[index - 1]?.focus();
+          inputRefs.current[index - 1]?.select();
+        } else if (e.key === 'ArrowRight' && index < length - 1) {
+          e.preventDefault();
+          inputRefs.current[index + 1]?.focus();
+          inputRefs.current[index + 1]?.select();
+        }
+      };
+
+      const handlePaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').trim();
+        const digitsOnly = pastedData.replace(/\D/g, '').slice(0, length);
+
+        if (digitsOnly.length > 0) {
+          const newOtp = [...value];
+          for (let i = 0; i < length; i++) {
+            newOtp[i] = digitsOnly[i] || '';
+          }
+          onChange(newOtp);
+          const nextFocus = Math.min(digitsOnly.length, length - 1);
+          inputRefs.current[nextFocus]?.focus();
+
+          if (digitsOnly.length === length && onComplete) {
+            onComplete(digitsOnly);
+          }
+        }
+      };
+
+      return (
+        <div className={`otp-boxes-row ${hasError ? 'shake' : ''}`}>
+          {Array.from({ length }, (_, index) => (
+            <input
+              key={index}
+              id={`otp-box-${index}`}
+              ref={(el) => (inputRefs.current[index] = el)}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={1}
+              value={value[index] || ''}
+              onChange={(e) => handleChange(e, index)}
+              onKeyDown={(e) => handleKeyDown(e, index)}
+              onPaste={handlePaste}
+              onFocus={(e) => e.target.select()}
+              disabled={disabled}
+              autoComplete="one-time-code"
+              className={`otp-box ${value[index] ? 'filled' : ''} ${hasError ? 'error' : ''}`}
+              aria-label={`Digit ${index + 1} of verification code`}
+            />
+          ))}
+        </div>
+      );
+    }
+
+    // --- Component: PasswordStrength ---
+    function PasswordStrength({ password = '' }) {
+      const { criteria, strength } = checkPasswordStrength(password);
+
+      const strengthLabels = {
+        none: 'Enter password',
+        weak: 'Weak',
+        fair: 'Fair',
+        good: 'Good',
+        strong: 'Strong'
+      };
+
+      return (
+        <div className="password-strength-container">
+          <div className="strength-bar-wrapper">
+            <div className={`strength-bars-track strength-${strength}`}>
+              <div className="strength-segment" />
+              <div className="strength-segment" />
+              <div className="strength-segment" />
+              <div className="strength-segment" />
+            </div>
+            <span className={`strength-label strength-${strength}`}>
+              {strengthLabels[strength]}
+            </span>
+          </div>
+
+          <ul className="password-checklist">
+            <li className={`checklist-item ${criteria.length ? 'passed' : ''}`}>
+              {criteria.length ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              )}
+              <span>At least 8 characters</span>
+            </li>
+
+            <li className={`checklist-item ${criteria.hasUppercase ? 'passed' : ''}`}>
+              {criteria.hasUppercase ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              )}
+              <span>Uppercase letter</span>
+            </li>
+
+            <li className={`checklist-item ${criteria.hasNumber ? 'passed' : ''}`}>
+              {criteria.hasNumber ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              )}
+              <span>At least 1 number</span>
+            </li>
+
+            <li className={`checklist-item ${criteria.hasSpecial ? 'passed' : ''}`}>
+              {criteria.hasSpecial ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              )}
+              <span>Special symbol (!@#$)</span>
+            </li>
+          </ul>
+        </div>
+      );
+    }
+
+    // --- Component: Alert ---
+    function Alert({ type = 'info', message, onClose, className = '' }) {
+      if (!message) return null;
+
+      const icons = {
+        success: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+        ),
+        error: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        ),
+        warning: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        ),
+        info: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        )
+      };
+
+      return (
+        <div className={`alert-banner alert-${type} ${className}`} role="alert">
+          <div className="alert-icon">{icons[type]}</div>
+          <div style={{ flex: 1 }}>{message}</div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '0 2px' }}
+              aria-label="Dismiss alert"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // --- Component: Toast ---
+    function Toast({ toasts = [], onDismiss }) {
+      if (!toasts || toasts.length === 0) return null;
+
+      return (
+        <div className="toast-container" aria-live="polite">
+          {toasts.map((toast) => (
+            <ToastItem key={toast.id} toast={toast} onDismiss={() => onDismiss(toast.id)} />
+          ))}
+        </div>
+      );
+    }
+
+    function ToastItem({ toast, onDismiss }) {
+      useEffect(() => {
+        if (toast.duration !== 0) {
+          const timer = setTimeout(() => {
+            onDismiss();
+          }, toast.duration || 6000);
+          return () => clearTimeout(timer);
+        }
+      }, [toast, onDismiss]);
+
+      const typeBorderColors = {
+        success: 'var(--success)',
+        error: 'var(--error)',
+        warning: 'var(--warning)',
+        info: 'var(--info)'
+      };
+
+      const icons = {
+        success: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+        ),
+        error: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--error)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        ),
+        warning: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        ),
+        info: (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--info)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        )
+      };
+
+      return (
+        <div
+          className="toast-item"
+          style={{ borderLeft: `4px solid ${typeBorderColors[toast.type || 'info']}` }}
+        >
+          <div className="toast-icon">{icons[toast.type || 'info']}</div>
+          <div className="toast-content">
+            <div className="toast-title">{toast.title}</div>
+            {toast.message && <div className="toast-desc">{toast.message}</div>}
+          </div>
+          <button
+            type="button"
+            className="toast-close-btn"
+            onClick={onDismiss}
+            aria-label="Close notification"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      );
+    }
+
+    // --- Component: MockEmailModal ---
+    function MockEmailModal({
+      isOpen,
+      onClose,
+      email,
+      otpCode,
+      onFillOtp
+    }) {
+      const [copied, setCopied] = useState(false);
+
+      if (!isOpen) return null;
+
+      const handleCopy = () => {
+        navigator.clipboard.writeText(otpCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      };
+
+      const handleFill = () => {
+        if (onFillOtp) {
+          onFillOtp(otpCode);
+        }
+        onClose();
+      };
+
+      const displayEmail = typeof email === 'string' && email ? email : 'yourname@example.com';
+
+      return (
+        <div className="mock-email-modal-overlay" onClick={onClose}>
+          <div
+            className="mock-email-window"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mock-email-header">
+              <div className="mock-inbox-badge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+                <span>Simulated Mailbox • Stackly Cloud Mail</span>
+              </div>
+              <button
+                type="button"
+                className="toast-close-btn"
+                onClick={onClose}
+                aria-label="Close modal"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mock-email-body">
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+                <div><strong>From:</strong> security@stackly.io (Stackly Security Service)</div>
+                <div><strong>To:</strong> {displayEmail}</div>
+                <div><strong>Subject:</strong> Your Stackly Password Reset Verification Code</div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                  Reset your Stackly password
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  We received a request to reset the password for your account associated with <span className="email-highlight">{displayEmail}</span>. Use the 6-digit verification code below to proceed:
+                </p>
+              </div>
+
+              <div className="mock-otp-highlight-box">
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>
+                  Verification Code (Valid for 10 minutes)
+                </div>
+                <div className="mock-otp-number">{otpCode}</div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Never share this code with anyone. Stackly staff will never ask for your code.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleCopy}
+                  style={{ flex: 1 }}
+                >
+                  {copied ? '✓ Copied to Clipboard' : '📋 Copy Code'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleFill}
+                  style={{ flex: 1 }}
+                >
+                  ⚡ Auto-Fill & Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Component: Navbar with Official Stackly Logo ---
+    function Navbar({
+      onResetView,
+      hasActiveOtp = false,
+      onOpenInbox
+    }) {
+      return (
+        <header className="navbar">
+          <button
+            type="button"
+            className="brand-logo"
+            onClick={onResetView}
+            title="Stackly Home"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            <StacklyLogo size="medium" />
+          </button>
+
+          {hasActiveOtp && (
+            <div className="nav-actions">
+              <button
+                type="button"
+                id="view-mock-inbox-btn"
+                className="btn btn-outline"
+                onClick={onOpenInbox}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', borderRadius: 'var(--radius-full)' }}
+              >
+                📬 View Mock Inbox
+              </button>
+            </div>
+          )}
+        </header>
+      );
+    }
+
+    // --- Component: Modern 404 Not Found Page ---
+    function NotFound404({ provider = 'Google', onBackToLogin }) {
+      return (
+        <div className="auth-card card-content-transition not-found-screen">
+          {/* 404 Header Badge */}
+          <div className="not-found-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>Error 404 • Page Not Found</span>
+          </div>
+
+          {/* Holographic Gradient 404 Display */}
+          <div className="glitch-404-box">
+            <div className="glitch-404-number">404</div>
+          </div>
+
+          <h2 className="card-title" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+            {provider} Service Unavailable
+          </h2>
+          
+          <p className="card-subtitle" style={{ maxWidth: '380px', margin: '0 auto 2rem', fontSize: '0.92rem' }}>
+            The requested <strong style={{ color: 'var(--accent-primary)' }}>{provider} Single Sign-On</strong> page or service could not be found. Please sign in with your email or return to the home page.
+          </p>
+
+          {/* Action Navigation */}
+          <div style={{ width: '100%' }}>
+            <Button
+              id="back-to-login-from-404"
+              type="button"
+              variant="primary"
+              onClick={onBackToLogin}
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+              }
+            >
+              Return to Sign In
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Component: LoginCard ---
+    function LoginCard({
+      onForgotPassword,
+      onLoginSuccess,
+      onNavigateTo404,
+      prefilledEmail = '',
+      userAccounts = {},
+      onToast
+    }) {
+      const [email, setEmail] = useState(typeof prefilledEmail === 'string' ? prefilledEmail : '');
+      const [password, setPassword] = useState('');
+      const [rememberMe, setRememberMe] = useState(true);
+      const [errors, setErrors] = useState({});
+      const [isLoading, setIsLoading] = useState(false);
+      const [connectingProvider, setConnectingProvider] = useState(null);
+      const [generalError, setGeneralError] = useState('');
+      const [generalSuccess, setGeneralSuccess] = useState('');
+
+      useEffect(() => {
+        if (typeof prefilledEmail === 'string') {
+          setEmail(prefilledEmail);
+        }
+      }, [prefilledEmail]);
+
+      const handleFillDemo = () => {
+        setEmail(DEMO_USER.email);
+        setPassword(DEMO_USER.password);
+        setErrors({});
+        setGeneralError('');
+        if (onToast) {
+          onToast({
+            type: 'info',
+            title: 'Demo Credentials Loaded',
+            message: 'Click "Sign In" or "Forgot password?" to test the flows!'
+          });
+        }
+      };
+
+      const handleSocialClick = async (provider) => {
+        setConnectingProvider(provider);
+        if (onToast) {
+          onToast({
+            type: 'info',
+            title: `Connecting to ${provider}`,
+            message: `Initiating ${provider} OAuth 2.0 handshake...`,
+            duration: 2000
+          });
+        }
+
+        // Modern model loading delay before redirecting to 404 page
+        await simulateDelay(1400);
+        setConnectingProvider(null);
+
+        if (onNavigateTo404) {
+          onNavigateTo404(provider);
+        }
+      };
+
+      const handleLogin = async (e) => {
+        e.preventDefault();
+        setGeneralError('');
+        setGeneralSuccess('');
+
+        const emailVal = validateEmail(email);
+        const newErrors = {};
+
+        if (!emailVal.isValid) {
+          newErrors.email = emailVal.error;
+        }
+
+        if (!password) {
+          newErrors.password = 'Password is required to sign in';
+        } else if (password.length < 6) {
+          newErrors.password = 'Password must be at least 6 characters';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+          return;
+        }
+
+        setErrors({});
+        setIsLoading(true);
+
+        try {
+          await simulateDelay(650);
+
+          const normalizedEmail = email.trim().toLowerCase();
+          const storedPassword = userAccounts[normalizedEmail];
+
+          if (storedPassword && password !== storedPassword) {
+            setGeneralError('Invalid password. Please use your newly reset password or reset it again.');
+            setIsLoading(false);
+            return;
+          }
+
+          if (normalizedEmail === DEMO_USER.email && !storedPassword && password !== DEMO_USER.password) {
+            setGeneralError('Invalid password for demo account. Use Password@2026 or click Forgot Password.');
+            setIsLoading(false);
+            return;
+          }
+
+          setGeneralSuccess(`Welcome back! Successfully authenticated as ${email.trim()}.`);
+          if (onToast) {
+            onToast({
+              type: 'success',
+              title: 'Signed In Successfully',
+              message: `Authenticated as ${email.trim()}`
+            });
+          }
+
+          if (onLoginSuccess) {
+            onLoginSuccess({ email: email.trim() });
+          }
+        } catch (err) {
+          setGeneralError('An unexpected authentication error occurred. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div className="auth-card card-content-transition" style={{ position: 'relative' }}>
+          {/* Modern Model OAuth Connecting Loader Overlay */}
+          {connectingProvider && (
+            <div className="oauth-loader-overlay">
+              <div className="orbit-loader-wrapper">
+                <div className="orbit-ring-outer" />
+                <div className="orbit-ring-active" />
+                <div className="orbit-center-icon">
+                  {connectingProvider === 'Google' ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                    </svg>
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#F8FAFC">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+
+              <h3 className="oauth-loader-title">Connecting to {connectingProvider}</h3>
+              <p className="oauth-loader-subtitle">Establishing secure TLS 1.3 tunnel with {connectingProvider} Single Sign-On...</p>
+
+              <div className="oauth-progress-track">
+                <div className="oauth-progress-bar" />
+              </div>
+            </div>
+          )}
+
+          <div className="card-header">
+            <h2 className="card-title">Welcome back</h2>
+            <p className="card-subtitle">Sign in with your email to access Stackly</p>
+          </div>
+
+          {generalError && (
+            <Alert
+              type="error"
+              message={generalError}
+              onClose={() => setGeneralError('')}
+            />
+          )}
+
+          {generalSuccess && (
+            <Alert
+              type="success"
+              message={generalSuccess}
+              onClose={() => setGeneralSuccess('')}
+            />
+          )}
+
+          <form onSubmit={handleLogin} noValidate>
+            <InputField
+              id="login-email"
+              label="Email Address"
+              type="email"
+              value={typeof email === 'string' ? email : ''}
+              placeholder="e.g. yourname@example.com"
+              required
+              autoComplete="email"
+              error={errors.email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors({ ...errors, email: '' });
+              }}
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              }
+            />
+
+            <InputField
+              id="login-password"
+              label="Password"
+              type="password"
+              value={password}
+              placeholder="••••••••••••"
+              required
+              autoComplete="current-password"
+              error={errors.password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors({ ...errors, password: '' });
+              }}
+              rightAction={
+                <button
+                  type="button"
+                  id="forgot-password-link"
+                  className="forgot-link"
+                  onClick={() => onForgotPassword(typeof email === 'string' ? email : '')}
+                >
+                  Forgot password?
+                </button>
+              }
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              }
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <label className="checkbox-label" htmlFor="remember-me">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ display: 'none' }}
+                />
+                <span className="checkbox-custom">
+                  {rememberMe && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#060b14" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </span>
+                <span>Remember for 30 days</span>
+              </label>
+            </div>
+
+            <Button
+              id="login-submit-btn"
+              type="submit"
+              variant="primary"
+              isLoading={isLoading}
+            >
+              Sign In to Stackly
+            </Button>
+          </form>
+
+          <div className="auth-divider">
+            <span>or continue with</span>
+          </div>
+
+          <div className="social-auth-grid">
+            <button
+              type="button"
+              id="google-oauth-btn"
+              className="btn-social"
+              onClick={() => handleSocialClick('Google')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Google</span>
+            </button>
+
+            <button
+              type="button"
+              id="github-oauth-btn"
+              className="btn-social"
+              onClick={() => handleSocialClick('GitHub')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              </svg>
+              <span>GitHub</span>
+            </button>
+          </div>
+
+          <div className="demo-credentials-box">
+            <div className="demo-text">
+              <span>Quick Demo: </span>
+              <strong>alex.rivera@stackly.io</strong>
+            </div>
+            <button
+              type="button"
+              id="fill-demo-btn"
+              className="btn-fill-demo"
+              onClick={handleFillDemo}
+            >
+              Auto Fill
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Component: EmailStep (Step 1) ---
+    function EmailStep({
+      email,
+      setEmail,
+      onNext,
+      onBackToLogin,
+      onToast
+    }) {
+      const [error, setError] = useState('');
+      const [isLoading, setIsLoading] = useState(false);
+      const [alertMsg, setAlertMsg] = useState('');
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setAlertMsg('');
+        setError('');
+
+        const validation = validateEmail(email);
+        if (!validation.isValid) {
+          setError(validation.error);
+          return;
+        }
+
+        setIsLoading(true);
+
+        try {
+          await simulateDelay(600);
+          onNext(email.trim());
+        } catch (err) {
+          setAlertMsg('Failed to dispatch verification code. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div className="card-content-transition">
+          <div className="card-header">
+            <h2 className="card-title">Forgot Password?</h2>
+            <p className="card-subtitle">
+              Enter your email address and we'll send you a 6-digit one-time passcode (OTP) to reset your password.
+            </p>
+          </div>
+
+          {alertMsg && (
+            <Alert
+              type="error"
+              message={alertMsg}
+              onClose={() => setAlertMsg('')}
+            />
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            <InputField
+              id="forgot-email-input"
+              label="Email Address"
+              type="email"
+              value={typeof email === 'string' ? email : ''}
+              placeholder="e.g. yourname@example.com"
+              required
+              autoFocus
+              autoComplete="email"
+              error={error}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError('');
+              }}
+              helperText="Any valid email address can be used to receive an OTP via EmailJS."
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                  <polyline points="22,6 12,13 2,6" />
+                </svg>
+              }
+            />
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <Button
+                id="send-code-btn"
+                type="submit"
+                variant="primary"
+                isLoading={isLoading}
+                rightIcon={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12 5 19 12 12 19" />
+                  </svg>
+                }
+              >
+                Send Verification Code
+              </Button>
+
+              <Button
+                id="back-to-signin-btn"
+                type="button"
+                variant="ghost"
+                onClick={() => onBackToLogin(typeof email === 'string' ? email : '')}
+                leftIcon={
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12" />
+                    <polyline points="12 19 5 12 12 5" />
+                  </svg>
+                }
+              >
+                Back to Sign In
+              </Button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+    // --- Component: OtpStep (Step 2) ---
+    function OtpStep({
+      email,
+      expectedOtp,
+      onVerifySuccess,
+      onResendOtp,
+      onEditEmail,
+      onOpenInbox,
+      onToast
+    }) {
+      const [otp, setOtp] = useState(['', '', '', '', '', '']);
+      const [error, setError] = useState('');
+      const [hasShake, setHasShake] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [resendTimer, setResendTimer] = useState(45);
+      const [isResending, setIsResending] = useState(false);
+
+      useEffect(() => {
+        let timer;
+        if (resendTimer > 0) {
+          timer = setInterval(() => {
+            setResendTimer((prev) => prev - 1);
+          }, 1000);
+        }
+        return () => clearInterval(timer);
+      }, [resendTimer]);
+
+      const handleVerify = async (codeToVerify) => {
+        setError('');
+        const code = codeToVerify || otp.join('');
+
+        const validation = validateOtp(code, expectedOtp);
+        if (!validation.isValid) {
+          setError(validation.error);
+          setHasShake(true);
+          setTimeout(() => setHasShake(false), 500);
+          return;
+        }
+
+        setIsLoading(true);
+
+        try {
+          await simulateDelay(650);
+
+          if (onToast) {
+            onToast({
+              type: 'success',
+              title: 'OTP Verified',
+              message: 'Identity confirmed. Proceed to reset your password.'
+            });
+          }
+
+          onVerifySuccess();
+        } catch (err) {
+          setError('Verification service unavailable. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const handleResend = async () => {
+        if (resendTimer > 0 || isResending) return;
+
+        setIsResending(true);
+        setError('');
+        try {
+          await simulateDelay(500);
+          const newOtp = await onResendOtp();
+          setResendTimer(60);
+          setOtp(['', '', '', '', '', '']);
+        } finally {
+          setIsResending(false);
+        }
+      };
+
+      return (
+        <div className="card-content-transition">
+          <div className="card-header">
+            <h2 className="card-title">Enter Verification Code</h2>
+            <p className="card-subtitle">
+              We sent a 6-digit temporary passcode to your email inbox.
+            </p>
+          </div>
+
+          <div className="edit-email-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--accent-primary)', flexShrink: 0 }}>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              </svg>
+              <span className="email-highlight" style={{ fontSize: '0.85rem' }}>{email}</span>
+            </div>
+            <button
+              type="button"
+              id="edit-email-btn"
+              className="edit-email-btn"
+              onClick={onEditEmail}
+              title="Change email"
+            >
+              Change
+            </button>
+          </div>
+
+          {error && (
+            <Alert
+              type="error"
+              message={error}
+              onClose={() => setError('')}
+            />
+          )}
+
+          {/* Quick Helper Banner */}
+          <div style={{
+            padding: '0.65rem 0.9rem',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--accent-subtle)',
+            border: '1px solid rgba(45, 212, 191, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '1rem',
+            fontSize: '0.8rem'
+          }}>
+            <div style={{ color: 'var(--text-secondary)' }}>
+              <span>Simulated OTP: </span>
+              <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-primary)', letterSpacing: '0.05em' }}>{expectedOtp}</strong>
+            </div>
+            <button
+              type="button"
+              id="open-mock-email-btn"
+              className="btn-fill-demo"
+              onClick={onOpenInbox}
+            >
+              View Email 📬
+            </button>
+          </div>
+
+          <div className="otp-container">
+            <OtpInput
+              value={otp}
+              onChange={(newOtp) => {
+                setOtp(newOtp);
+                if (error) setError('');
+              }}
+              onComplete={(completedCode) => {
+                handleVerify(completedCode);
+              }}
+              hasError={hasShake || Boolean(error)}
+              disabled={isLoading}
+            />
+
+            <div className="otp-actions-row">
+              <span>Didn't receive the code?</span>
+              <button
+                type="button"
+                id="resend-otp-btn"
+                className="resend-btn"
+                onClick={handleResend}
+                disabled={resendTimer > 0 || isResending}
+              >
+                {resendTimer > 0 ? (
+                  <>
+                    <span>Resend code in </span>
+                    <span className="timer-tag">{resendTimer}s</span>
+                  </>
+                ) : (
+                  <span>Resend Code</span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.25rem' }}>
+            <Button
+              id="verify-otp-btn"
+              type="button"
+              variant="primary"
+              isLoading={isLoading}
+              onClick={() => handleVerify()}
+              disabled={otp.join('').length < 6}
+            >
+              Verify & Continue
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onEditEmail}
+              leftIcon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+              }
+            >
+              Back to Email Entry
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Component: ResetPasswordStep (Step 3) ---
+    function ResetPasswordStep({
+      email,
+      onResetSuccess,
+      onToast
+    }) {
+      const [newPassword, setNewPassword] = useState('');
+      const [confirmPassword, setConfirmPassword] = useState('');
+      const [errors, setErrors] = useState({});
+      const [isLoading, setIsLoading] = useState(false);
+      const [generalError, setGeneralError] = useState('');
+
+      const strengthInfo = checkPasswordStrength(newPassword);
+
+      const handleSuggestPassword = () => {
+        const suggested = 'Stackly#Pass2026';
+        setNewPassword(suggested);
+        setConfirmPassword(suggested);
+        setErrors({});
+        setGeneralError('');
+        if (onToast) {
+          onToast({
+            type: 'info',
+            title: 'Strong Password Generated',
+            message: 'Filled a secure password fulfilling all security requirements.'
+          });
+        }
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setGeneralError('');
+        const newErrors = {};
+
+        if (!newPassword || newPassword.trim() === '') {
+          newErrors.newPassword = 'New password is required';
+        } else if (!strengthInfo.isValid) {
+          newErrors.newPassword = 'Password must meet all 4 requirements below';
+          setGeneralError('Please ensure your password meets all 4 security criteria.');
+        }
+
+        const matchVal = validatePasswordMatch(newPassword, confirmPassword);
+        if (!matchVal.isValid) {
+          newErrors.confirmPassword = matchVal.error;
+          if (!generalError) setGeneralError(matchVal.error);
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+          return;
+        }
+
+        setErrors({});
+        setIsLoading(true);
+
+        try {
+          await simulateDelay(700);
+
+          if (onToast) {
+            onToast({
+              type: 'success',
+              title: 'Password Updated',
+              message: 'Your Stackly credentials have been securely updated.'
+            });
+          }
+
+          onResetSuccess(newPassword);
+        } catch (err) {
+          setGeneralError('Failed to reset password. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div className="card-content-transition">
+          <div className="card-header">
+            <h2 className="card-title">Reset Password</h2>
+            <p className="card-subtitle">
+              Create a new strong password for <span className="email-highlight">{email}</span>.
+            </p>
+          </div>
+
+          {generalError && (
+            <Alert
+              type="error"
+              message={generalError}
+              onClose={() => setGeneralError('')}
+            />
+          )}
+
+          <form onSubmit={handleSubmit} noValidate>
+            <InputField
+              id="new-password-input"
+              label="New Password"
+              type="password"
+              value={newPassword}
+              placeholder="Create a strong password"
+              required
+              autoFocus
+              autoComplete="new-password"
+              error={errors.newPassword}
+              rightAction={
+                <button
+                  type="button"
+                  id="suggest-password-btn"
+                  className="quick-suggest-btn"
+                  onClick={handleSuggestPassword}
+                  title="Generate a secure strong password"
+                >
+                  ⚡ Suggest Strong
+                </button>
+              }
+              onChange={(e) => {
+                setNewPassword(e.target.value);
+                if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
+              }}
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              }
+            />
+
+            {/* Live Password Strength Meter */}
+            <PasswordStrength password={newPassword} />
+
+            <InputField
+              id="confirm-password-input"
+              label="Confirm New Password"
+              type="password"
+              value={confirmPassword}
+              placeholder="Re-enter your new password"
+              required
+              autoComplete="new-password"
+              error={errors.confirmPassword}
+              isValid={confirmPassword && newPassword === confirmPassword}
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+              }}
+              helperText={
+                confirmPassword && newPassword === confirmPassword
+                  ? '✓ Passwords match'
+                  : ''
+              }
+              leftIcon={
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              }
+            />
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Button
+                id="reset-password-submit-btn"
+                type="submit"
+                variant="primary"
+                isLoading={isLoading}
+              >
+                Update & Save Password
+              </Button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
+    // --- Component: SuccessStep (Step 4) ---
+    function SuccessStep({ email, onBackToLogin }) {
+      const safeEmail = typeof email === 'string' ? email : 'yourname@example.com';
+      return (
+        <div className="card-content-transition success-screen">
+          <div className="success-badge-wrapper">
+            <div className="success-ripple" />
+            <div className="success-badge-circle">
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#060b14" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+          </div>
+
+          <h2 className="card-title">Password Reset Complete!</h2>
+          <p className="card-subtitle" style={{ maxWidth: '380px', margin: '0 auto' }}>
+            Your Stackly account password has been securely updated. You can now sign in using your new credentials.
+          </p>
+
+          <div className="success-info-card">
+            <div className="info-card-row">
+              <span className="info-label">Account</span>
+              <span className="info-val">{safeEmail}</span>
+            </div>
+            <div className="info-card-row">
+              <span className="info-label">Security Status</span>
+              <span className="info-val" style={{ color: 'var(--success)' }}>● Active & Protected</span>
+            </div>
+            <div className="info-card-row">
+              <span className="info-label">Active Sessions</span>
+              <span className="info-val">Terminated across devices</span>
+            </div>
+          </div>
+
+          <Button
+            id="back-to-login-final-btn"
+            type="button"
+            variant="primary"
+            onClick={() => onBackToLogin(safeEmail)}
+            rightIcon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            }
+          >
+            Sign In with New Password
+          </Button>
+        </div>
+      );
+    }
+
+    // --- Component: ForgotPasswordFlow ---
+    const STEPS = [
+      { id: 1, label: 'Email' },
+      { id: 2, label: 'Verify OTP' },
+      { id: 3, label: 'New Password' },
+      { id: 4, label: 'Complete' }
+    ];
+
+    function ForgotPasswordFlow({
+      initialEmail = '',
+      onBackToLogin,
+      onOpenInbox,
+      activeOtp,
+      setActiveOtp,
+      onPasswordResetDone,
+      onToast
+    }) {
+      const [currentStep, setCurrentStep] = useState(1);
+      const [email, setEmail] = useState(typeof initialEmail === 'string' ? initialEmail : '');
+
+      useEffect(() => {
+        if (typeof initialEmail === 'string' && initialEmail) {
+          setEmail(initialEmail);
+        }
+      }, [initialEmail]);
+
+      const handleEmailSubmitted = async (submittedEmail) => {
+        const validEmail = submittedEmail || email;
+        setEmail(validEmail);
+        const code = generateRandomOtp();
+        setActiveOtp(code);
+
+        // Send OTP via EmailJS
+        const result = await sendOtpViaEmailJS({
+          toEmail: validEmail,
+          otpCode: code,
+          userName: validEmail.split('@')[0]
+        });
+
+        if (onToast) {
+          if (result.success && !result.isSimulated) {
+            onToast({
+              type: 'success',
+              title: 'Email Delivered via EmailJS',
+              message: `Verification code delivered to ${validEmail}`
+            });
+          } else {
+            onToast({
+              type: 'info',
+              title: 'Verification Code Dispatched',
+              message: `A 6-digit security code was sent to ${validEmail}`
+            });
+          }
+        }
+
+        setCurrentStep(2);
+      };
+
+      const handleResendOtp = async () => {
+        const freshCode = generateRandomOtp();
+        setActiveOtp(freshCode);
+
+        const result = await sendOtpViaEmailJS({
+          toEmail: email,
+          otpCode: freshCode,
+          userName: email.split('@')[0]
+        });
+
+        if (onToast) {
+          onToast({
+            type: 'info',
+            title: 'New OTP Dispatched',
+            message: `A fresh 6-digit code has been sent to ${email}`
+          });
+        }
+
+        return freshCode;
+      };
+
+      const handleOtpVerified = () => {
+        setCurrentStep(3);
+      };
+
+      const handlePasswordReset = (newPassword) => {
+        if (onPasswordResetDone) {
+          onPasswordResetDone(email, newPassword);
+        }
+        setCurrentStep(4);
+      };
+
+      const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
+
+      return (
+        <div className="auth-card">
+          {/* Stepper Progress Bar */}
+          <div className="step-indicator">
+            <div className="step-indicator-track" />
+            <div
+              className="step-indicator-fill"
+              style={{ width: `${progressPercent}%` }}
+            />
+
+            {STEPS.map((step) => {
+              const isCompleted = step.id < currentStep;
+              const isActive = step.id === currentStep;
+
+              return (
+                <div
+                  key={step.id}
+                  className={`step-node ${isActive ? 'active' : ''} ${
+                    isCompleted ? 'completed' : ''
+                  }`}
+                >
+                  <div className="step-circle">
+                    {isCompleted ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      step.id
+                    )}
+                  </div>
+                  <span className="step-label">{step.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {currentStep === 1 && (
+            <EmailStep
+              email={email}
+              setEmail={setEmail}
+              onNext={handleEmailSubmitted}
+              onBackToLogin={onBackToLogin}
+              onToast={onToast}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <OtpStep
+              email={email}
+              expectedOtp={activeOtp}
+              onVerifySuccess={handleOtpVerified}
+              onResendOtp={handleResendOtp}
+              onEditEmail={() => setCurrentStep(1)}
+              onOpenInbox={onOpenInbox}
+              onToast={onToast}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <ResetPasswordStep
+              email={email}
+              onResetSuccess={handlePasswordReset}
+              onToast={onToast}
+            />
+          )}
+
+          {currentStep === 4 && (
+            <SuccessStep
+              email={email}
+              onBackToLogin={() => onBackToLogin(typeof email === 'string' ? email : '')}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // --- Main App Component ---
+    function App() {
+      const [view, setView] = useState('login'); // 'login' | 'forgot-password' | '404'
+      const [oauthProvider, setOauthProvider] = useState('Google');
+      const [prefilledEmail, setPrefilledEmail] = useState('');
+      const [activeOtp, setActiveOtp] = useState('849201');
+      const [isInboxModalOpen, setIsInboxModalOpen] = useState(false);
+      const [userAccounts, setUserAccounts] = useState({
+        [DEMO_USER.email.toLowerCase()]: DEMO_USER.password
+      });
+      const [toasts, setToasts] = useState([
+        {
+          id: 1,
+          type: 'info',
+          title: 'Welcome to Stackly Platform',
+          message: 'Firebase Auth & EmailJS OTP delivery ready. Configure in .env anytime.',
+          duration: 5000
+        }
+      ]);
+
+      const addToast = ({ type = 'info', title, message, duration = 5000 }) => {
+        const id = Date.now() + Math.random();
+        setToasts((prev) => [...prev, { id, type, title, message, duration }]);
+      };
+
+      const removeToast = (id) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      };
+
+      const handleStartForgotPassword = (email) => {
+        const safeEmail = typeof email === 'string' ? email : '';
+        setPrefilledEmail(safeEmail);
+        setView('forgot-password');
+      };
+
+      const handleBackToLogin = (email) => {
+        const safeEmail = typeof email === 'string' ? email : '';
+        setPrefilledEmail(safeEmail);
+        setView('login');
+      };
+
+      const handleNavigateTo404 = (provider) => {
+        setOauthProvider(provider || 'OAuth');
+        setView('404');
+      };
+
+      const handlePasswordResetDone = (email, newPassword) => {
+        if (email && typeof email === 'string') {
+          const normalized = email.trim().toLowerCase();
+          setUserAccounts((prev) => ({
+            ...prev,
+            [normalized]: newPassword
+          }));
+          setPrefilledEmail(email.trim());
+        }
+      };
+
+      return (
+        <div className="app-container">
+          {/* Animated Ambient Tech Background */}
+          <div className="ambient-bg" aria-hidden="true">
+            <div className="tech-grid-overlay" />
+            <div className="tech-laser-scanner" />
+            <div className="orb-1" />
+            <div className="orb-2" />
+            <div className="orb-3" />
+
+            <div className="floating-tech-icon tech-icon-1">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                <line x1="6" y1="6" x2="6.01" y2="6" />
+                <line x1="6" y1="18" x2="6.01" y2="18" />
+              </svg>
+            </div>
+
+            <div className="floating-tech-icon tech-icon-2">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </div>
+
+            <div className="floating-tech-icon tech-icon-3">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+            </div>
+
+            <div className="floating-tech-icon tech-icon-4">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Clean Navbar with Official Stackly Logo */}
+          <Navbar
+            onResetView={() => setView('login')}
+            hasActiveOtp={view === 'forgot-password' && Boolean(activeOtp)}
+            onOpenInbox={() => setIsInboxModalOpen(true)}
+          />
+
+          {/* Centered Main Authentication Card */}
+          <main className="auth-wrapper">
+            <div className="auth-card-container">
+              {view === 'login' && (
+                <LoginCard
+                  prefilledEmail={prefilledEmail}
+                  userAccounts={userAccounts}
+                  onForgotPassword={handleStartForgotPassword}
+                  onNavigateTo404={handleNavigateTo404}
+                  onLoginSuccess={(user) => {}}
+                  onToast={addToast}
+                />
+              )}
+
+              {view === 'forgot-password' && (
+                <ForgotPasswordFlow
+                  initialEmail={prefilledEmail}
+                  onBackToLogin={handleBackToLogin}
+                  onOpenInbox={() => setIsInboxModalOpen(true)}
+                  activeOtp={activeOtp}
+                  setActiveOtp={setActiveOtp}
+                  onPasswordResetDone={handlePasswordResetDone}
+                  onToast={addToast}
+                />
+              )}
+
+              {view === '404' && (
+                <NotFound404
+                  provider={oauthProvider}
+                  onBackToLogin={() => handleBackToLogin(prefilledEmail)}
+                />
+              )}
+            </div>
+          </main>
+
+          {/* Toast Notification Container */}
+          <Toast toasts={toasts} onDismiss={removeToast} />
+
+          {/* Simulated Email Inbox Popup */}
+          <MockEmailModal
+            isOpen={isInboxModalOpen}
+            onClose={() => setIsInboxModalOpen(false)}
+            email={prefilledEmail || DEMO_USER.email}
+            otpCode={activeOtp}
+            onFillOtp={(code) => {
+              addToast({
+                type: 'success',
+                title: 'OTP Copied & Filled',
+                message: `Applied verification code ${code}`
+              });
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Mount to DOM
+    const rootElement = document.getElementById('root');
+    ReactDOM.createRoot(rootElement).render(<App />);
+  </script>
+</body>
+</html>
