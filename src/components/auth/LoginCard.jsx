@@ -1,48 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import StacklyLogo from '../common/StacklyLogo';
 import { validateEmail } from '../../utils/validation';
 import { simulateDelay } from '../../utils/mockData';
 import { loginWithEmail, isFirebaseConfigured } from '../../services/firebase';
 
 /**
- * Clean Enterprise Login Card Component
+ * Modern 3D Blue Theme - Sign In Component
+ * Matches the user reference image pixel-for-pixel
  */
 export default function LoginCard({
   onForgotPassword,
   onLoginSuccess,
+  onNavigateTo404,
   prefilledEmail = '',
   userAccounts = {},
   onToast
 }) {
-  const [email, setEmail] = useState(typeof prefilledEmail === 'string' && prefilledEmail ? prefilledEmail : 'admin@oneenterprise.com');
+  const [username, setUsername] = useState(
+    typeof prefilledEmail === 'string' && prefilledEmail ? prefilledEmail : 'admin@oneenterprise.com'
+  );
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [generalError, setGeneralError] = useState('');
-  const [generalSuccess, setGeneralSuccess] = useState('');
+  const [showOtherMenu, setShowOtherMenu] = useState(false);
 
   useEffect(() => {
     if (typeof prefilledEmail === 'string' && prefilledEmail) {
-      setEmail(prefilledEmail);
+      setUsername(prefilledEmail);
     }
   }, [prefilledEmail]);
 
   const handleFillDemo = (type = 'admin') => {
     if (type === 'admin') {
-      setEmail('admin@oneenterprise.com');
+      setUsername('admin@oneenterprise.com');
       setPassword('admin123');
     } else {
-      setEmail('hr@oneenterprise.com');
+      setUsername('hr@oneenterprise.com');
       setPassword('hr12345');
     }
+    setShowOtherMenu(false);
     setErrors({});
     setGeneralError('');
     if (onToast) {
       onToast({
         type: 'info',
-        title: 'Credentials Loaded',
-        message: `Filled ${type.toUpperCase()} demo account details.`
+        title: 'Demo Loaded',
+        message: `Filled ${type.toUpperCase()} credentials.`
       });
     }
   };
@@ -50,17 +55,14 @@ export default function LoginCard({
   const handleLogin = async (e) => {
     e.preventDefault();
     setGeneralError('');
-    setGeneralSuccess('');
 
-    const emailVal = validateEmail(email);
     const newErrors = {};
-
-    if (!email || email.trim() === '') {
-      newErrors.email = 'Username / Email is required';
+    if (!username || username.trim() === '') {
+      newErrors.username = 'User Name is required';
     }
 
     if (!password) {
-      newErrors.password = 'Password is required to sign in';
+      newErrors.password = 'Password is required';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -72,12 +74,18 @@ export default function LoginCard({
     setIsLoading(true);
 
     try {
-      // 1. Firebase Authentication if configured in .env
+      // 1. Firebase Authentication if configured
       if (isFirebaseConfigured()) {
-        const fbResult = await loginWithEmail(email.trim(), password);
+        const fbResult = await loginWithEmail(username.trim(), password);
         if (fbResult.success) {
-          setGeneralSuccess(`Welcome back! Authenticated as ${email.trim()}.`);
-          if (onLoginSuccess) onLoginSuccess({ email: email.trim(), user: fbResult.user });
+          if (onToast) {
+            onToast({
+              type: 'success',
+              title: 'Signed In',
+              message: `Welcome back, ${username.trim()}!`
+            });
+          }
+          if (onLoginSuccess) onLoginSuccess({ email: username.trim(), user: fbResult.user });
           setIsLoading(false);
           return;
         } else if (!fbResult.isSimulated) {
@@ -87,115 +95,95 @@ export default function LoginCard({
         }
       }
 
-      // 2. Local State Authentication (Supports demo accounts and newly reset passwords)
-      await simulateDelay(600);
+      // 2. Local State Authentication
+      await simulateDelay(500);
 
-      const normalized = email.trim().toLowerCase();
+      const normalized = username.trim().toLowerCase();
       const storedPassword = userAccounts[normalized];
 
-      // If user reset this password during forgot password flow
       if (storedPassword && password !== storedPassword) {
-        setGeneralError('Invalid password. Please use your newly reset password or reset it again.');
+        setGeneralError('Invalid password. Please enter your correct or newly reset password.');
         setIsLoading(false);
         return;
       }
 
-      setGeneralSuccess(`Welcome back! Successfully logged in as ${email.trim()}.`);
       if (onToast) {
         onToast({
           type: 'success',
-          title: 'Login Successful',
-          message: `Authenticated as ${email.trim()}`
+          title: 'Sign In Successful',
+          message: `Logged in as ${username.trim()}`
         });
       }
 
       if (onLoginSuccess) {
-        onLoginSuccess({ email: email.trim() });
+        onLoginSuccess({ email: username.trim() });
       }
     } catch (err) {
-      setGeneralError('An unexpected authentication error occurred. Please try again.');
+      setGeneralError('Authentication failed. Please check credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="form-wrapper">
-      {/* Brand Header */}
-      <div className="brand-header">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.65rem' }}>
-          <StacklyLogo size="small" />
-        </div>
-        <h1 className="brand-main-title">One Enterprise</h1>
-        <p className="brand-sub-title">One Enterprise Cloud Platform</p>
-      </div>
-
-      <h2 className="section-heading">Login to Platform</h2>
+    <div className="form-content-inner">
+      {/* Title & Subtitle */}
+      <h1 className="form-main-title">Sign in</h1>
+      <p className="form-sub-title">Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
 
       {generalError && (
-        <div className="alert-box alert-error">{generalError}</div>
-      )}
-
-      {generalSuccess && (
-        <div className="alert-box alert-success">{generalSuccess}</div>
-      )}
-
-      {/* Demo Mode Box Matching Screenshot */}
-      <div className="demo-mode-card">
-        <div className="demo-title">Demo mode</div>
-        <div className="demo-credentials">
-          <div>Admin: <strong>admin@oneenterprise.com</strong> / admin123</div>
-          <div>HR: <strong>hr@oneenterprise.com</strong> / hr12345</div>
+        <div className="alert-box alert-error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>{generalError}</span>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <button
-            type="button"
-            className="demo-auto-btn"
-            onClick={() => handleFillDemo('admin')}
-          >
-            Auto Fill Admin
-          </button>
-          <button
-            type="button"
-            className="demo-auto-btn"
-            style={{ background: '#0d5cb6' }}
-            onClick={() => handleFillDemo('hr')}
-          >
-            Auto Fill HR
-          </button>
-        </div>
-      </div>
+      )}
 
       <form onSubmit={handleLogin} noValidate>
-        {/* Username / Email */}
-        <div className="form-field">
-          <label className="form-label" htmlFor="login-username">Username</label>
-          <div className="input-container">
+        {/* User Name Input with Silhouette Icon */}
+        <div className="form-input-group">
+          <div className={`form-input-box ${errors.username ? 'has-error' : ''}`}>
+            <span className="input-icon-left">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </span>
             <input
-              id="login-username"
+              id="signin-username"
               type="text"
-              className={`clean-input ${errors.email ? 'error' : ''}`}
-              placeholder="admin@oneenterprise.com"
-              value={email}
+              className="form-clean-input"
+              placeholder="User Name"
+              value={username}
+              autoComplete="username"
               onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors.email) setErrors({ ...errors, email: '' });
+                setUsername(e.target.value);
+                if (errors.username) setErrors({ ...errors, username: '' });
               }}
             />
           </div>
-          {errors.email && <span className="field-error">{errors.email}</span>}
+          {errors.username && <div className="field-error-msg">{errors.username}</div>}
         </div>
 
-        {/* Password */}
-        <div className="form-field">
-          <label className="form-label" htmlFor="login-password">Password</label>
-          <div className="input-container">
+        {/* Password Input with Lock Icon & SHOW/HIDE Toggle */}
+        <div className="form-input-group">
+          <div className={`form-input-box ${errors.password ? 'has-error' : ''}`}>
+            <span className="input-icon-left">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </span>
             <input
-              id="login-password"
+              id="signin-password"
               type={showPassword ? 'text' : 'password'}
-              className={`clean-input has-toggle ${errors.password ? 'error' : ''}`}
-              placeholder="••••••••"
+              className="form-clean-input"
+              placeholder="Password"
               value={password}
+              autoComplete="current-password"
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors.password) setErrors({ ...errors, password: '' });
@@ -203,48 +191,136 @@ export default function LoginCard({
             />
             <button
               type="button"
-              className="eye-toggle-btn"
+              id="toggle-show-password-btn"
+              className="btn-password-toggle"
               onClick={() => setShowPassword(!showPassword)}
-              title={showPassword ? 'Hide password' : 'Show password'}
-              tabIndex={-1}
             >
-              {showPassword ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
+              {showPassword ? 'HIDE' : 'SHOW'}
             </button>
           </div>
-          {errors.password && <span className="field-error">{errors.password}</span>}
+          {errors.password && <div className="field-error-msg">{errors.password}</div>}
         </div>
 
-        {/* Login Button */}
+        {/* Remember me & Forgot Password Row */}
+        <div className="form-options-row">
+          <label className="remember-me-label" onClick={() => setRememberMe(!rememberMe)}>
+            <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
+              {rememberMe && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+            <span>Remember me</span>
+          </label>
+
+          <button
+            type="button"
+            id="forgot-password-link"
+            className="link-forgot-pass"
+            onClick={() => onForgotPassword(username)}
+          >
+            Forgot Password?
+          </button>
+        </div>
+
+        {/* Primary Action Button ("Sign in") */}
         <button
-          id="login-btn"
+          id="signin-submit-btn"
           type="submit"
-          className="btn-submit"
+          className="btn-primary-signin"
           disabled={isLoading}
         >
-          {isLoading ? 'Signing In...' : 'Login'}
+          {isLoading ? 'Signing In...' : 'Sign in'}
         </button>
       </form>
 
-      {/* Forgot Password Link Row matching screenshot */}
-      <div className="bottom-link-row">
-        <span>Forgot Password? </span>
+      {/* Divider */}
+      <div className="divider-or-row">
+        <div className="divider-line" />
+        <span className="divider-text">Or</span>
+        <div className="divider-line" />
+      </div>
+
+      {/* Secondary Action Button ("Sign in with other") */}
+      <button
+        id="signin-with-other-btn"
+        type="button"
+        className="btn-secondary-outline"
+        onClick={() => setShowOtherMenu(!showOtherMenu)}
+      >
+        <span>Sign in with other</span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            transform: showOtherMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s ease'
+          }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {/* Dropdown for "Sign in with other" */}
+      {showOtherMenu && (
+        <div className="demo-dropdown-menu">
+          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Quick Demo & OAuth Providers
+          </div>
+          <button
+            type="button"
+            className="demo-btn-item"
+            onClick={() => handleFillDemo('admin')}
+          >
+            <span>👑 Admin Demo Account</span>
+            <span style={{ fontSize: '0.72rem', color: '#0066f5' }}>Auto-Fill</span>
+          </button>
+          <button
+            type="button"
+            className="demo-btn-item"
+            onClick={() => handleFillDemo('hr')}
+          >
+            <span>👔 HR Demo Account</span>
+            <span style={{ fontSize: '0.72rem', color: '#0066f5' }}>Auto-Fill</span>
+          </button>
+          <button
+            type="button"
+            className="demo-btn-item"
+            onClick={() => {
+              setShowOtherMenu(false);
+              if (onNavigateTo404) onNavigateTo404('Google Single Sign-On');
+            }}
+          >
+            <span>🌐 Google Single Sign-On</span>
+            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Connect</span>
+          </button>
+        </div>
+      )}
+
+      {/* Bottom Sign Up Link */}
+      <div className="bottom-signup-row">
+        <span>Don't have an account?</span>
         <button
           type="button"
-          id="forgot-password-click-here"
-          className="clickable-link"
-          onClick={() => onForgotPassword(typeof email === 'string' ? email : '')}
+          className="link-signup"
+          onClick={() => {
+            if (onToast) {
+              onToast({
+                type: 'info',
+                title: 'Sign Up Portal',
+                message: 'Self-service registration demo.'
+              });
+            }
+          }}
         >
-          Click Here
+          Sign Up
         </button>
       </div>
     </div>

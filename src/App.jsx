@@ -9,7 +9,7 @@ import { DEMO_USER } from './utils/mockData';
 export default function App() {
   const [view, setView] = useState('login'); // 'login' | 'forgot-password' | '404'
   const [oauthProvider, setOauthProvider] = useState('Google');
-  const [prefilledEmail, setPrefilledEmail] = useState('');
+  const [prefilledEmail, setPrefilledEmail] = useState('admin@oneenterprise.com');
   const [activeOtp, setActiveOtp] = useState('849201');
   const [isInboxModalOpen, setIsInboxModalOpen] = useState(false);
   const [userAccounts, setUserAccounts] = useState({
@@ -57,64 +57,74 @@ export default function App() {
   };
 
   return (
-    <div className="split-container">
-      {/* ==========================================================================
-          LEFT SIDE: ROYAL BLUE HERO BANNER
-          ========================================================================== */}
-      <section className="hero-banner">
-        <div className="hero-waves">
-          <div className="hero-curve-1" />
-          <div className="hero-curve-2" />
-        </div>
+    <div className="auth-page-wrapper">
+      {/* Ambient background lighting */}
+      <div className="bg-ambient-orb-1" />
+      <div className="bg-ambient-orb-2" />
 
-        <div className="hero-content">
-          <h1 className="hero-title">
-            Welcome back to One Enterprise!
-          </h1>
-          <p className="hero-subtitle">
-            Login and continue where you left off. You will be signed in based on your roles and permissions.
-          </p>
-        </div>
-      </section>
+      {/* Main Floating Rounded Card */}
+      <div className="main-auth-card">
+        {/* ==========================================================================
+            LEFT PANEL: 3D BLUE SPHERES & WELCOME BANNER
+            ========================================================================== */}
+        <section className="card-welcome-panel">
+          <div className="sphere-layer">
+            <div className="sphere-3d-upper" />
+            <div className="sphere-3d-main" />
+            <div className="sphere-3d-left" />
+          </div>
 
-      {/* ==========================================================================
-          RIGHT SIDE: CLEAN WHITE FORM PANEL
-          ========================================================================== */}
-      <section className="form-panel">
-        {view === 'login' && (
-          <LoginCard
-            prefilledEmail={prefilledEmail}
-            userAccounts={userAccounts}
-            onForgotPassword={handleStartForgotPassword}
-            onNavigateTo404={handleNavigateTo404}
-            onLoginSuccess={(user) => {}}
-            onToast={addToast}
-          />
-        )}
+          <div className="welcome-content">
+            <h2 className="welcome-title">WELCOME</h2>
+            <div className="welcome-headline">YOUR HEADLINE NAME</div>
+            <p className="welcome-desc">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim quis nostrud exerci tation
+            </p>
+          </div>
+        </section>
 
-        {view === 'forgot-password' && (
-          <div className="form-wrapper">
-            <ForgotPasswordFlow
-              initialEmail={prefilledEmail}
-              onBackToLogin={handleBackToLogin}
-              onOpenInbox={() => setIsInboxModalOpen(true)}
-              activeOtp={activeOtp}
-              setActiveOtp={setActiveOtp}
-              onPasswordResetDone={handlePasswordResetDone}
+        {/* ==========================================================================
+            RIGHT PANEL: CLEAN WHITE FORM PANEL
+            ========================================================================== */}
+        <section className="card-form-panel">
+          {/* Decorative Corner Orb */}
+          <div className="card-decor-orb-bottom-right" />
+
+          {view === 'login' && (
+            <LoginCard
+              prefilledEmail={prefilledEmail}
+              userAccounts={userAccounts}
+              onForgotPassword={handleStartForgotPassword}
+              onNavigateTo404={handleNavigateTo404}
+              onLoginSuccess={(user) => {}}
               onToast={addToast}
             />
-          </div>
-        )}
+          )}
 
-        {view === '404' && (
-          <div className="form-wrapper">
-            <NotFound404
-              provider={oauthProvider}
-              onBackToLogin={() => handleBackToLogin(prefilledEmail)}
-            />
-          </div>
-        )}
-      </section>
+          {view === 'forgot-password' && (
+            <div className="flow-container-inner" style={{ position: 'relative', zIndex: 2 }}>
+              <ForgotPasswordFlow
+                initialEmail={prefilledEmail}
+                onBackToLogin={handleBackToLogin}
+                onOpenInbox={() => setIsInboxModalOpen(true)}
+                activeOtp={activeOtp}
+                setActiveOtp={setActiveOtp}
+                onPasswordResetDone={handlePasswordResetDone}
+                onToast={addToast}
+              />
+            </div>
+          )}
+
+          {view === '404' && (
+            <div className="flow-container-inner" style={{ position: 'relative', zIndex: 2 }}>
+              <NotFound404
+                provider={oauthProvider}
+                onBackToLogin={() => handleBackToLogin(prefilledEmail)}
+              />
+            </div>
+          )}
+        </section>
+      </div>
 
       {/* Toast Notifications */}
       <Toast toasts={toasts} onDismiss={removeToast} />
@@ -128,8 +138,8 @@ export default function App() {
         onFillOtp={(code) => {
           addToast({
             type: 'success',
-            title: 'OTP Copied & Filled',
-            message: `Applied verification code ${code}`
+            title: 'OTP Applied',
+            message: `Verification code ${code} filled successfully.`
           });
         }}
       />

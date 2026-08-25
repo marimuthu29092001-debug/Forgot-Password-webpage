@@ -4,7 +4,7 @@ import OtpStep from './OtpStep';
 import ResetPasswordStep from './ResetPasswordStep';
 import SuccessStep from './SuccessStep';
 import { generateRandomOtp } from '../../utils/mockData';
-import { sendOtpEmail, isEmailJSConfigured } from '../../services/emailService';
+import { sendOtpEmail } from '../../services/emailService';
 
 const STEPS = [
   { id: 1, label: 'Email' },
@@ -14,7 +14,7 @@ const STEPS = [
 ];
 
 /**
- * Multi-Step Container for the Forgot Password Flow with EmailJS Integration
+ * Multi-Step Container for the Forgot Password Flow
  */
 export default function ForgotPasswordFlow({
   initialEmail = '',
@@ -40,7 +40,6 @@ export default function ForgotPasswordFlow({
     const code = generateRandomOtp();
     setActiveOtp(code);
 
-    // Dispatch real email via EmailJS (or smart simulation)
     const emailResult = await sendOtpEmail({
       toEmail: validEmail,
       otpCode: code,
@@ -51,13 +50,13 @@ export default function ForgotPasswordFlow({
       if (emailResult.success && !emailResult.isSimulated) {
         onToast({
           type: 'success',
-          title: 'Real Email Dispatched via EmailJS',
-          message: `6-digit OTP delivered to your actual inbox: ${validEmail}`
+          title: 'Email Sent via EmailJS',
+          message: `6-digit OTP delivered to ${validEmail}`
         });
       } else {
         onToast({
           type: 'info',
-          title: 'OTP Code Generated',
+          title: 'OTP Generated',
           message: `Verification code ${code} sent to ${validEmail}`
         });
       }
@@ -70,7 +69,6 @@ export default function ForgotPasswordFlow({
     const freshCode = generateRandomOtp();
     setActiveOtp(freshCode);
 
-    // Dispatch fresh email via EmailJS
     const emailResult = await sendOtpEmail({
       toEmail: email,
       otpCode: freshCode,
@@ -110,12 +108,12 @@ export default function ForgotPasswordFlow({
   const progressPercent = ((currentStep - 1) / (STEPS.length - 1)) * 100;
 
   return (
-    <div className="auth-card">
+    <div className="flow-inner-wrapper">
       {/* Stepper Progress Bar */}
-      <div className="step-indicator">
-        <div className="step-indicator-track" />
+      <div className="stepper-row">
+        <div className="stepper-bg-bar" />
         <div
-          className="step-indicator-fill"
+          className="stepper-fill-bar"
           style={{ width: `${progressPercent}%` }}
         />
 
@@ -126,20 +124,20 @@ export default function ForgotPasswordFlow({
           return (
             <div
               key={step.id}
-              className={`step-node ${isActive ? 'active' : ''} ${
+              className={`step-node-item ${isActive ? 'active' : ''} ${
                 isCompleted ? 'completed' : ''
               }`}
             >
-              <div className="step-circle">
+              <div className="step-circle-badge">
                 {isCompleted ? (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : (
                   step.id
                 )}
               </div>
-              <span className="step-label">{step.label}</span>
+              <span className="step-title-text">{step.label}</span>
             </div>
           );
         })}

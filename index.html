@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>One Enterprise — Login to Platform</title>
-  <meta name="description" content="One Enterprise Cloud Platform authentication portal with full Forgot Password flow." />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'><path d='M29 6C23 6 12 14 8 26C5 34 10 40 20 40C14 36 12 28 16 21C20 15 28 13 38 18C35 11 32 6 29 6Z' fill='%2378D6C6'/><path d='M25 58C31 58 42 50 46 38C49 30 44 24 34 24C40 28 42 36 38 43C34 49 26 51 16 46C19 53 22 58 25 58Z' fill='%2338BDF8'/></svg>" />
+  <title>Sign in — Platform</title>
+  <meta name="description" content="Modern authentication portal with Forgot Password flow." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'><circle cx='32' cy='32' r='28' fill='%230066F5'/><circle cx='24' cy='24' r='10' fill='%2338BDF8'/></svg>" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,7 +26,7 @@
 <body>
   <div id="root"></div>
 
-  <!-- React Application Core with One Enterprise Clean Split Layout -->
+  <!-- React Application Core with Modern 3D Blue Floating Card Layout -->
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
@@ -79,64 +79,17 @@
       };
     }
 
-    // --- Component: Official Stackly Brand Logo ---
-    function StacklyLogo({ size = 'small' }) {
-      return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-          <svg height="32" viewBox="0 0 160 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <g id="s-mark">
-              <path d="M22 6C17 6 9 12 6 21C4 27 8 32 16 32C11 29 9 22 12 17C15 12 21 10 29 14C27 9 24 6 22 6Z" fill="#78D6C6" />
-              <path d="M20 44C25 44 33 38 36 29C38 23 34 18 26 18C31 21 33 28 30 33C27 38 21 40 13 36C15 41 18 44 20 44Z" fill="#1877F2" />
-            </g>
-            <text x="48" y="32" fontFamily="'Plus Jakarta Sans', sans-serif" fontSize="20" fontWeight="900" letterSpacing="1.5" fill="#1E293B">
-              STACKLY
-            </text>
-          </svg>
-        </div>
-      );
-    }
-
     // --- Validation Utilities ---
     const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
     function validateEmail(email) {
-      if (!email || typeof email !== 'string' || email.trim() === '') {
-        return { isValid: false, error: 'Email / Username is required' };
-      }
-      const trimmed = email.trim();
-      if (!EMAIL_REGEX.test(trimmed)) {
+      if (!email || !email.trim()) return { isValid: false, error: 'Email / User Name is required' };
+      if (email.includes('@') && !EMAIL_REGEX.test(email.trim())) {
         return { isValid: false, error: 'Please enter a valid email address' };
       }
-      return { isValid: true, error: '' };
+      return { isValid: true, error: null };
     }
 
-    function checkPasswordStrength(password = '') {
-      const safe = typeof password === 'string' ? password : '';
-      const criteria = {
-        length: safe.length >= 8,
-        hasUppercase: /[A-Z]/.test(safe),
-        hasNumber: /[0-9]/.test(safe),
-        hasSpecial: /[^A-Za-z0-9]/.test(safe),
-      };
-
-      let score = 0;
-      if (criteria.length) score += 1;
-      if (criteria.hasUppercase) score += 1;
-      if (criteria.hasNumber) score += 1;
-      if (criteria.hasSpecial) score += 1;
-
-      let strength = 'none';
-      if (safe.length > 0) {
-        if (score <= 1) strength = 'weak';
-        else if (score === 2) strength = 'fair';
-        else if (score === 3) strength = 'good';
-        else if (score >= 4) strength = 'strong';
-      }
-
-      return { criteria, score, strength, isValid: score >= 4 };
-    }
-
-    function simulateDelay(ms = 500) {
+    function simulateDelay(ms = 600) {
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
@@ -144,43 +97,33 @@
       return Math.floor(100000 + Math.random() * 900000).toString();
     }
 
-    // --- Component: LoginCard (Matches Screenshot) ---
-    function LoginCard({
-      onForgotPassword,
-      onLoginSuccess,
-      prefilledEmail = '',
-      userAccounts = {},
-      onToast
-    }) {
-      const [email, setEmail] = useState(typeof prefilledEmail === 'string' && prefilledEmail ? prefilledEmail : 'admin@oneenterprise.com');
+    // --- Component: LoginCard matching screenshot ---
+    function LoginCard({ onForgotPassword, userAccounts, onLoginSuccess, onToast }) {
+      const [username, setUsername] = useState('admin@oneenterprise.com');
       const [password, setPassword] = useState('admin123');
       const [showPassword, setShowPassword] = useState(false);
+      const [rememberMe, setRememberMe] = useState(true);
       const [errors, setErrors] = useState({});
       const [isLoading, setIsLoading] = useState(false);
       const [generalError, setGeneralError] = useState('');
-      const [generalSuccess, setGeneralSuccess] = useState('');
-
-      useEffect(() => {
-        if (typeof prefilledEmail === 'string' && prefilledEmail) {
-          setEmail(prefilledEmail);
-        }
-      }, [prefilledEmail]);
+      const [showOtherMenu, setShowOtherMenu] = useState(false);
 
       const handleFillDemo = (type = 'admin') => {
         if (type === 'admin') {
-          setEmail('admin@oneenterprise.com');
+          setUsername('admin@oneenterprise.com');
           setPassword('admin123');
         } else {
-          setEmail('hr@oneenterprise.com');
+          setUsername('hr@oneenterprise.com');
           setPassword('hr12345');
         }
+        setShowOtherMenu(false);
         setErrors({});
         setGeneralError('');
         if (onToast) {
           onToast({
             type: 'info',
-            title: 'Credentials Loaded',
-            message: `Loaded ${type.toUpperCase()} demo account details.`
+            title: 'Demo Credentials',
+            message: `Loaded ${type.toUpperCase()} account`
           });
         }
       };
@@ -188,15 +131,10 @@
       const handleLogin = async (e) => {
         e.preventDefault();
         setGeneralError('');
-        setGeneralSuccess('');
 
         const newErrors = {};
-        if (!email || email.trim() === '') {
-          newErrors.email = 'Username / Email is required';
-        }
-        if (!password) {
-          newErrors.password = 'Password is required';
-        }
+        if (!username.trim()) newErrors.username = 'User Name is required';
+        if (!password) newErrors.password = 'Password is required';
 
         if (Object.keys(newErrors).length > 0) {
           setErrors(newErrors);
@@ -207,26 +145,24 @@
         setIsLoading(true);
 
         try {
-          await simulateDelay(600);
-          const normalized = email.trim().toLowerCase();
+          await simulateDelay(500);
+          const normalized = username.trim().toLowerCase();
           const storedPassword = userAccounts[normalized];
 
           if (storedPassword && password !== storedPassword) {
-            setGeneralError('Invalid password. Please use your newly reset password.');
+            setGeneralError('Invalid password. Please enter your valid or reset password.');
             setIsLoading(false);
             return;
           }
 
-          setGeneralSuccess(`Welcome back! Successfully logged in as ${email.trim()}.`);
           if (onToast) {
             onToast({
               type: 'success',
-              title: 'Signed In',
-              message: `Authenticated as ${email.trim()}`
+              title: 'Sign In Successful',
+              message: `Logged in as ${username.trim()}`
             });
           }
-
-          if (onLoginSuccess) onLoginSuccess({ email: email.trim() });
+          if (onLoginSuccess) onLoginSuccess({ email: username.trim() });
         } catch (err) {
           setGeneralError('Authentication failed. Please try again.');
         } finally {
@@ -235,76 +171,55 @@
       };
 
       return (
-        <div className="form-wrapper">
-          {/* Brand Header */}
-          <div className="brand-header">
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.65rem' }}>
-              <StacklyLogo />
-            </div>
-            <h1 className="brand-main-title">One Enterprise</h1>
-            <p className="brand-sub-title">One Enterprise Cloud Platform</p>
-          </div>
+        <div className="form-content-inner">
+          <h1 className="form-main-title">Sign in</h1>
+          <p className="form-sub-title">Lorem ipsum dolor sit amet, consectetuer adipiscing elit</p>
 
-          <h2 className="section-heading">Login to Platform</h2>
-
-          {generalError && <div className="alert-box alert-error">{generalError}</div>}
-          {generalSuccess && <div className="alert-box alert-success">{generalSuccess}</div>}
-
-          {/* Demo Mode Container */}
-          <div className="demo-mode-card">
-            <div className="demo-title">Demo mode</div>
-            <div className="demo-credentials">
-              <div>Admin: <strong>admin@oneenterprise.com</strong> / admin123</div>
-              <div>HR: <strong>hr@oneenterprise.com</strong> / hr12345</div>
+          {generalError && (
+            <div className="alert-box alert-error">
+              <span>{generalError}</span>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button
-                type="button"
-                className="demo-auto-btn"
-                onClick={() => handleFillDemo('admin')}
-              >
-                Auto Fill Admin
-              </button>
-              <button
-                type="button"
-                className="demo-auto-btn"
-                style={{ background: '#0d5cb6' }}
-                onClick={() => handleFillDemo('hr')}
-              >
-                Auto Fill HR
-              </button>
-            </div>
-          </div>
+          )}
 
           <form onSubmit={handleLogin} noValidate>
-            {/* Username / Email */}
-            <div className="form-field">
-              <label className="form-label" htmlFor="login-username">Username</label>
-              <div className="input-container">
+            {/* User Name Input */}
+            <div className="form-input-group">
+              <div className={`form-input-box ${errors.username ? 'has-error' : ''}`}>
+                <span className="input-icon-left">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </span>
                 <input
-                  id="login-username"
+                  id="signin-username"
                   type="text"
-                  className={`clean-input ${errors.email ? 'error' : ''}`}
-                  placeholder="admin@oneenterprise.com"
-                  value={email}
+                  className="form-clean-input"
+                  placeholder="User Name"
+                  value={username}
                   onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (errors.email) setErrors({ ...errors, email: '' });
+                    setUsername(e.target.value);
+                    if (errors.username) setErrors({ ...errors, username: '' });
                   }}
                 />
               </div>
-              {errors.email && <span className="field-error">{errors.email}</span>}
+              {errors.username && <div className="field-error-msg">{errors.username}</div>}
             </div>
 
-            {/* Password */}
-            <div className="form-field">
-              <label className="form-label" htmlFor="login-password">Password</label>
-              <div className="input-container">
+            {/* Password Input */}
+            <div className="form-input-group">
+              <div className={`form-input-box ${errors.password ? 'has-error' : ''}`}>
+                <span className="input-icon-left">
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </span>
                 <input
-                  id="login-password"
+                  id="signin-password"
                   type={showPassword ? 'text' : 'password'}
-                  className={`clean-input has-toggle ${errors.password ? 'error' : ''}`}
-                  placeholder="••••••••"
+                  className="form-clean-input"
+                  placeholder="Password"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -313,48 +228,121 @@
                 />
                 <button
                   type="button"
-                  className="eye-toggle-btn"
+                  id="toggle-show-password-btn"
+                  className="btn-password-toggle"
                   onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={-1}
                 >
-                  {showPassword ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
+                  {showPassword ? 'HIDE' : 'SHOW'}
                 </button>
               </div>
-              {errors.password && <span className="field-error">{errors.password}</span>}
+              {errors.password && <div className="field-error-msg">{errors.password}</div>}
             </div>
 
-            {/* Login Button */}
+            {/* Remember me & Forgot Password */}
+            <div className="form-options-row">
+              <label className="remember-me-label" onClick={() => setRememberMe(!rememberMe)}>
+                <div className={`custom-checkbox ${rememberMe ? 'checked' : ''}`}>
+                  {rememberMe && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </div>
+                <span>Remember me</span>
+              </label>
+
+              <button
+                type="button"
+                id="forgot-password-link"
+                className="link-forgot-pass"
+                onClick={() => onForgotPassword(username)}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
+            {/* Primary Sign in Button */}
             <button
-              id="login-btn"
+              id="signin-submit-btn"
               type="submit"
-              className="btn-submit"
+              className="btn-primary-signin"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing In...' : 'Login'}
+              {isLoading ? 'Signing In...' : 'Sign in'}
             </button>
           </form>
 
-          {/* Bottom link matching screenshot */}
-          <div className="bottom-link-row">
-            <span>Forgot Password? </span>
+          {/* Divider */}
+          <div className="divider-or-row">
+            <div className="divider-line" />
+            <span className="divider-text">Or</span>
+            <div className="divider-line" />
+          </div>
+
+          {/* Sign in with other Button */}
+          <button
+            id="signin-with-other-btn"
+            type="button"
+            className="btn-secondary-outline"
+            onClick={() => setShowOtherMenu(!showOtherMenu)}
+          >
+            <span>Sign in with other</span>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transform: showOtherMenu ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease'
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showOtherMenu && (
+            <div className="demo-dropdown-menu">
+              <button
+                type="button"
+                className="demo-btn-item"
+                onClick={() => handleFillDemo('admin')}
+              >
+                <span>👑 Admin Demo Account</span>
+                <span style={{ fontSize: '0.72rem', color: '#0066f5' }}>Auto-Fill</span>
+              </button>
+              <button
+                type="button"
+                className="demo-btn-item"
+                onClick={() => handleFillDemo('hr')}
+              >
+                <span>👔 HR Demo Account</span>
+                <span style={{ fontSize: '0.72rem', color: '#0066f5' }}>Auto-Fill</span>
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Sign Up Row */}
+          <div className="bottom-signup-row">
+            <span>Don't have an account?</span>
             <button
               type="button"
-              id="forgot-password-click-here"
-              className="clickable-link"
-              onClick={() => onForgotPassword(typeof email === 'string' ? email : '')}
+              className="link-signup"
+              onClick={() => {
+                if (onToast) {
+                  onToast({
+                    type: 'info',
+                    title: 'Sign Up',
+                    message: 'Self-service registration portal demo.'
+                  });
+                }
+              }}
             >
-              Click Here
+              Sign Up
             </button>
           </div>
         </div>
@@ -386,46 +374,48 @@
       };
 
       return (
-        <div className="form-wrapper">
-          <div className="brand-header">
-            <h1 className="brand-main-title" style={{ fontSize: '1.45rem' }}>Forgot Password?</h1>
-            <p className="brand-sub-title">Enter your email to receive a 6-digit OTP code.</p>
+        <div className="flow-inner-wrapper">
+          <div className="card-header">
+            <h2 className="card-title">Forgot Password?</h2>
+            <p className="card-subtitle">Enter your email to receive a 6-digit OTP code.</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="form-field">
+            <div className="form-group">
               <label className="form-label" htmlFor="forgot-email-input">Email Address</label>
-              <input
-                id="forgot-email-input"
-                type="email"
-                className={`clean-input ${error ? 'error' : ''}`}
-                placeholder="admin@oneenterprise.com"
-                value={email}
-                autoFocus
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (error) setError('');
-                }}
-              />
-              {error && <span className="field-error">{error}</span>}
+              <div className="input-wrapper">
+                <input
+                  id="forgot-email-input"
+                  type="email"
+                  className="form-input no-left-icon"
+                  placeholder="admin@oneenterprise.com"
+                  value={email}
+                  autoFocus
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError('');
+                  }}
+                />
+              </div>
+              {error && <span className="field-error-msg">{error}</span>}
             </div>
 
             <button
               id="send-code-btn"
               type="submit"
-              className="btn-submit"
+              className="btn btn-primary w-full"
               disabled={isLoading}
             >
               {isLoading ? 'Sending Code...' : 'Send Verification Code'}
             </button>
 
-            <div className="bottom-link-row">
+            <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
               <button
                 type="button"
-                className="clickable-link"
+                className="link-forgot-pass"
                 onClick={() => onBackToLogin(email)}
               >
-                ← Back to Login
+                ← Back to Sign in
               </button>
             </div>
           </form>
@@ -450,14 +440,14 @@
       }, []);
 
       const handleChange = (e, index) => {
-        const val = e.target.value.replace(/\D/g, '').slice(-1);
+        const val = e.target.value.replace(/\D/g, '');
         const newOtp = [...otp];
-        newOtp[index] = val;
+        newOtp[index] = val ? val.slice(-1) : '';
         setOtp(newOtp);
         if (error) setError('');
 
-        if (val && index < 5) {
-          inputRefs.current[index + 1]?.focus();
+        if (val && index < 5 && inputRefs.current[index + 1]) {
+          inputRefs.current[index + 1].focus();
         }
 
         const complete = newOtp.join('');
@@ -474,120 +464,73 @@
 
       const handleVerify = async (codeToVerify) => {
         const code = codeToVerify || otp.join('');
-        if (code.length < 6) {
-          setError('Please enter all 6 digits');
-          return;
-        }
-        if (expectedOtp && code !== expectedOtp) {
-          setError('Incorrect verification code. Please try again.');
+        if (code !== expectedOtp) {
+          setError(`Invalid OTP code. For demo, use: ${expectedOtp}`);
           return;
         }
 
         setIsLoading(true);
         try {
           await simulateDelay(600);
-          if (onToast) {
-            onToast({
-              type: 'success',
-              title: 'OTP Verified',
-              message: 'Code confirmed! Now set your new password.'
-            });
-          }
           onVerifySuccess();
         } finally {
           setIsLoading(false);
         }
       };
 
-      const handleResend = async () => {
-        if (timer > 0) return;
-        const newCode = await onResendOtp();
-        setTimer(60);
-        setOtp(['', '', '', '', '', '']);
-        if (onToast) {
-          onToast({
-            type: 'info',
-            title: 'New Code Sent',
-            message: `Fresh verification code: ${newCode}`
-          });
-        }
-      };
-
       return (
-        <div className="form-wrapper">
-          <div className="brand-header">
-            <h1 className="brand-main-title" style={{ fontSize: '1.45rem' }}>Enter Verification Code</h1>
-            <p className="brand-sub-title">We sent a 6-digit OTP code to <strong>{email}</strong>.</p>
+        <div className="flow-inner-wrapper">
+          <div className="card-header">
+            <h2 className="card-title">Enter Verification Code</h2>
+            <p className="card-subtitle">We sent a 6-digit code to <strong className="email-highlight">{email}</strong></p>
+          </div>
+
+          <div style={{ background: '#eff6ff', padding: '0.65rem 0.85rem', borderRadius: '10px', fontSize: '0.8rem', color: '#1d4ed8', marginBottom: '1rem', textAlign: 'center' }}>
+            Demo OTP Code: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.1em' }}>{expectedOtp}</strong>
           </div>
 
           {error && <div className="alert-box alert-error">{error}</div>}
 
-          {/* Quick OTP Helper Banner */}
-          <div style={{
-            padding: '0.6rem 0.9rem',
-            background: 'var(--bg-demo-box)',
-            border: '1px solid var(--border-demo)',
-            borderRadius: 'var(--radius-md)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '0.82rem',
-            marginBottom: '1rem'
-          }}>
-            <span>OTP Code: <strong style={{ fontFamily: 'var(--font-mono)', color: '#1877f2' }}>{expectedOtp}</strong></span>
-            <button
-              type="button"
-              className="clickable-link"
-              onClick={() => {
-                const parts = expectedOtp.split('');
-                setOtp(parts);
-                handleVerify(expectedOtp);
-              }}
-            >
-              Auto Fill & Verify
-            </button>
-          </div>
-
-          <div className="otp-row">
-            {otp.map((digit, idx) => (
+          <div className="otp-boxes-row">
+            {Array.from({ length: 6 }, (_, i) => (
               <input
-                key={idx}
-                ref={(el) => (inputRefs.current[idx] = el)}
+                key={i}
+                ref={(el) => (inputRefs.current[i] = el)}
                 type="text"
                 maxLength={1}
-                className={`clean-otp-box ${digit ? 'filled' : ''}`}
-                value={digit}
-                onChange={(e) => handleChange(e, idx)}
-                onKeyDown={(e) => handleKeyDown(e, idx)}
+                className={`otp-box ${otp[i] ? 'filled' : ''}`}
+                value={otp[i]}
+                onChange={(e) => handleChange(e, i)}
+                onKeyDown={(e) => handleKeyDown(e, i)}
               />
             ))}
           </div>
 
-          <div style={{ textAlign: 'center', fontSize: '0.82rem', margin: '0.75rem 0 1.25rem', color: '#64748b' }}>
-            {timer > 0 ? (
-              <span>Resend code in <strong style={{ color: '#1877f2' }}>{timer}s</strong></span>
-            ) : (
-              <button type="button" className="clickable-link" onClick={handleResend}>
-                Resend Code Now
-              </button>
-            )}
+          <div className="otp-actions-row">
+            <span>Didn't receive code?</span>
+            <button
+              type="button"
+              className="resend-btn"
+              disabled={timer > 0}
+              onClick={() => {
+                const code = onResendOtp();
+                setTimer(45);
+              }}
+            >
+              {timer > 0 ? `Resend in ${timer}s` : 'Resend Code'}
+            </button>
           </div>
 
           <button
-            id="verify-otp-btn"
+            id="verify-btn"
             type="button"
-            className="btn-submit"
+            className="btn btn-primary w-full"
+            style={{ marginTop: '1.25rem' }}
             disabled={isLoading || otp.join('').length < 6}
             onClick={() => handleVerify()}
           >
             {isLoading ? 'Verifying...' : 'Verify & Continue'}
           </button>
-
-          <div className="bottom-link-row">
-            <button type="button" className="clickable-link" onClick={onEditEmail}>
-              ← Change Email Address
-            </button>
-          </div>
         </div>
       );
     }
@@ -596,46 +539,26 @@
     function ResetPasswordStep({ email, onResetSuccess, onToast }) {
       const [newPassword, setNewPassword] = useState('');
       const [confirmPassword, setConfirmPassword] = useState('');
-      const [errors, setErrors] = useState({});
+      const [error, setError] = useState('');
       const [isLoading, setIsLoading] = useState(false);
-
-      const strength = checkPasswordStrength(newPassword);
-
-      const handleSuggest = () => {
-        const pass = 'Stackly@Pass2026';
-        setNewPassword(pass);
-        setConfirmPassword(pass);
-        setErrors({});
-      };
 
       const handleSubmit = async (e) => {
         e.preventDefault();
-        const errs = {};
+        setError('');
 
-        if (!newPassword || !strength.isValid) {
-          errs.newPassword = 'Password must meet all 4 requirements below';
-        }
-        if (newPassword !== confirmPassword) {
-          errs.confirmPassword = 'Passwords do not match';
-        }
-
-        if (Object.keys(errs).length > 0) {
-          setErrors(errs);
+        if (!newPassword || newPassword.length < 6) {
+          setError('Password must be at least 6 characters');
           return;
         }
 
-        setErrors({});
-        setIsLoading(true);
+        if (newPassword !== confirmPassword) {
+          setError('Passwords do not match');
+          return;
+        }
 
+        setIsLoading(true);
         try {
           await simulateDelay(600);
-          if (onToast) {
-            onToast({
-              type: 'success',
-              title: 'Password Updated',
-              message: 'Your account password has been successfully reset.'
-            });
-          }
           onResetSuccess(newPassword);
         } finally {
           setIsLoading(false);
@@ -643,81 +566,50 @@
       };
 
       return (
-        <div className="form-wrapper">
-          <div className="brand-header">
-            <h1 className="brand-main-title" style={{ fontSize: '1.45rem' }}>Create New Password</h1>
-            <p className="brand-sub-title">Set a new strong password for <strong>{email}</strong>.</p>
+        <div className="flow-inner-wrapper">
+          <div className="card-header">
+            <h2 className="card-title">Reset Password</h2>
+            <p className="card-subtitle">Create a new password for <strong className="email-highlight">{email}</strong></p>
           </div>
 
+          {error && <div className="alert-box alert-error">{error}</div>}
+
           <form onSubmit={handleSubmit} noValidate>
-            <div className="form-field">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="form-label">New Password</label>
-                <button type="button" className="clickable-link" style={{ fontSize: '0.75rem' }} onClick={handleSuggest}>
-                  ⚡ Suggest Strong
-                </button>
+            <div className="form-group">
+              <label className="form-label" htmlFor="new-pass">New Password</label>
+              <div className="input-wrapper">
+                <input
+                  id="new-pass"
+                  type="password"
+                  className="form-input no-left-icon"
+                  placeholder="Enter new password (min 6 chars)"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
               </div>
-              <input
-                id="new-password-input"
-                type="password"
-                className={`clean-input ${errors.newPassword ? 'error' : ''}`}
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
-                }}
-              />
-              {errors.newPassword && <span className="field-error">{errors.newPassword}</span>}
             </div>
 
-            {/* Clean Strength Meter */}
-            <div className="strength-meter-clean">
-              <div className={`strength-bar-grid strength-${strength.strength}`}>
-                <div className="strength-bar-seg" />
-                <div className="strength-bar-seg" />
-                <div className="strength-bar-seg" />
-                <div className="strength-bar-seg" />
+            <div className="form-group">
+              <label className="form-label" htmlFor="confirm-pass">Confirm Password</label>
+              <div className="input-wrapper">
+                <input
+                  id="confirm-pass"
+                  type="password"
+                  className="form-input no-left-icon"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
               </div>
-              <ul className="checklist-clean">
-                <li className={strength.criteria.length ? 'ok' : ''}>
-                  {strength.criteria.length ? '✓' : '•'} 8+ characters
-                </li>
-                <li className={strength.criteria.hasUppercase ? 'ok' : ''}>
-                  {strength.criteria.hasUppercase ? '✓' : '•'} Uppercase
-                </li>
-                <li className={strength.criteria.hasNumber ? 'ok' : ''}>
-                  {strength.criteria.hasNumber ? '✓' : '•'} Number
-                </li>
-                <li className={strength.criteria.hasSpecial ? 'ok' : ''}>
-                  {strength.criteria.hasSpecial ? '✓' : '•'} Symbol (!@#)
-                </li>
-              </ul>
-            </div>
-
-            <div className="form-field">
-              <label className="form-label">Confirm Password</label>
-              <input
-                id="confirm-password-input"
-                type="password"
-                className={`clean-input ${errors.confirmPassword ? 'error' : ''}`}
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
-                }}
-              />
-              {errors.confirmPassword && <span className="field-error">{errors.confirmPassword}</span>}
             </div>
 
             <button
-              id="reset-password-submit-btn"
+              id="save-pass-btn"
               type="submit"
-              className="btn-submit"
+              className="btn btn-primary w-full"
               disabled={isLoading}
             >
-              {isLoading ? 'Saving Password...' : 'Save New Password'}
+              {isLoading ? 'Updating...' : 'Save New Password'}
             </button>
           </form>
         </div>
@@ -727,132 +619,26 @@
     // --- Component: SuccessStep (Step 4) ---
     function SuccessStep({ email, onBackToLogin }) {
       return (
-        <div className="form-wrapper" style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '50%',
-            background: '#ecfdf5',
-            color: '#10b981',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.25rem',
-            fontSize: '2rem'
-          }}>
-            ✓
+        <div className="flow-inner-wrapper success-screen">
+          <div className="success-badge-wrapper">
+            <div className="success-badge-circle">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
           </div>
-
-          <h1 className="brand-main-title" style={{ fontSize: '1.45rem', marginBottom: '0.4rem' }}>
-            Password Reset Complete!
-          </h1>
-          <p className="brand-sub-title" style={{ marginBottom: '1.5rem' }}>
-            Your account password has been updated. You can now login with your new credentials.
-          </p>
+          <h2 className="card-title">Password Reset Complete!</h2>
+          <p className="card-subtitle">Your password has been successfully updated. You can now sign in with your new credentials.</p>
 
           <button
-            id="back-to-login-final-btn"
+            id="back-to-login-btn"
             type="button"
-            className="btn-submit"
-            onClick={() => onBackToLogin(email)}
+            className="btn btn-primary w-full"
+            style={{ marginTop: '1.5rem' }}
+            onClick={onBackToLogin}
           >
-            Login with New Password
+            Sign in with New Password
           </button>
-        </div>
-      );
-    }
-
-    // --- Multi-Step Container: ForgotPasswordFlow ---
-    function ForgotPasswordFlow({ initialEmail, onBackToLogin, activeOtp, setActiveOtp, onPasswordResetDone, onToast }) {
-      const [step, setStep] = useState(1);
-      const [email, setEmail] = useState(initialEmail || '');
-
-      const handleEmailSubmitted = async (subEmail) => {
-        const validEmail = subEmail || email;
-        setEmail(validEmail);
-        const code = generateRandomOtp();
-        setActiveOtp(code);
-        await sendOtpViaEmailJS({ toEmail: validEmail, otpCode: code });
-        if (onToast) {
-          onToast({
-            type: 'info',
-            title: 'Verification Code Dispatched',
-            message: `OTP ${code} sent to ${validEmail}`
-          });
-        }
-        setStep(2);
-      };
-
-      const handleResend = async () => {
-        const fresh = generateRandomOtp();
-        setActiveOtp(fresh);
-        await sendOtpViaEmailJS({ toEmail: email, otpCode: fresh });
-        return fresh;
-      };
-
-      const handlePasswordReset = (newPass) => {
-        if (onPasswordResetDone) {
-          onPasswordResetDone(email, newPass);
-        }
-        setStep(4);
-      };
-
-      const stepsList = ['Email', 'Verify', 'New Password', 'Done'];
-
-      return (
-        <div className="form-wrapper">
-          {/* Clean Stepper */}
-          <div className="stepper-track">
-            <div className="stepper-line" />
-            <div className="stepper-line-fill" style={{ width: `${((step - 1) / 3) * 100}%` }} />
-            {stepsList.map((label, idx) => {
-              const num = idx + 1;
-              const isDone = num < step;
-              const isCurrent = num === step;
-              return (
-                <div key={idx} className={`stepper-node ${isCurrent ? 'active' : ''} ${isDone ? 'completed' : ''}`}>
-                  <div className="stepper-dot">{isDone ? '✓' : num}</div>
-                  <span className="stepper-text">{label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {step === 1 && (
-            <EmailStep
-              email={email}
-              setEmail={setEmail}
-              onNext={handleEmailSubmitted}
-              onBackToLogin={onBackToLogin}
-              onToast={onToast}
-            />
-          )}
-
-          {step === 2 && (
-            <OtpStep
-              email={email}
-              expectedOtp={activeOtp}
-              onVerifySuccess={() => setStep(3)}
-              onResendOtp={handleResend}
-              onEditEmail={() => setStep(1)}
-              onToast={onToast}
-            />
-          )}
-
-          {step === 3 && (
-            <ResetPasswordStep
-              email={email}
-              onResetSuccess={handlePasswordReset}
-              onToast={onToast}
-            />
-          )}
-
-          {step === 4 && (
-            <SuccessStep
-              email={email}
-              onBackToLogin={onBackToLogin}
-            />
-          )}
         </div>
       );
     }
@@ -860,88 +646,164 @@
     // --- Main App Component ---
     function App() {
       const [view, setView] = useState('login'); // 'login' | 'forgot-password'
-      const [prefilledEmail, setPrefilledEmail] = useState('');
+      const [prefilledEmail, setPrefilledEmail] = useState('admin@oneenterprise.com');
       const [activeOtp, setActiveOtp] = useState('849201');
+      const [step, setStep] = useState(1);
       const [userAccounts, setUserAccounts] = useState({
         'admin@oneenterprise.com': 'admin123',
         'hr@oneenterprise.com': 'hr12345'
       });
       const [toasts, setToasts] = useState([]);
 
-      const addToast = ({ type = 'info', title, message, duration = 4500 }) => {
+      const addToast = ({ type = 'info', title, message }) => {
         const id = Date.now() + Math.random();
-        setToasts((prev) => [...prev, { id, type, title, message, duration }]);
+        setToasts((prev) => [...prev, { id, type, title, message }]);
+        setTimeout(() => removeToast(id), 4000);
       };
 
       const removeToast = (id) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       };
 
-      const handlePasswordResetDone = (email, newPassword) => {
-        if (email) {
-          const normalized = email.trim().toLowerCase();
-          setUserAccounts((prev) => ({
-            ...prev,
-            [normalized]: newPassword
-          }));
-          setPrefilledEmail(email.trim());
-        }
+      const handlePasswordResetDone = (email, newPass) => {
+        setUserAccounts((prev) => ({
+          ...prev,
+          [email.trim().toLowerCase()]: newPass
+        }));
+        setPrefilledEmail(email);
+        addToast({
+          type: 'success',
+          title: 'Password Reset',
+          message: 'Saved new password successfully.'
+        });
       };
 
       return (
-        <div className="split-container">
-          {/* Left Hero Banner */}
-          <section className="hero-banner">
-            <div className="hero-waves">
-              <div className="hero-curve-1" />
-              <div className="hero-curve-2" />
-            </div>
+        <div className="auth-page-wrapper">
+          <div className="bg-ambient-orb-1" />
+          <div className="bg-ambient-orb-2" />
 
-            <div className="hero-content">
-              <h1 className="hero-title">
-                Welcome back to One Enterprise!
-              </h1>
-              <p className="hero-subtitle">
-                Login and continue where you left off. You will be signed in based on your roles and permissions.
-              </p>
-            </div>
-          </section>
+          <div className="main-auth-card">
+            {/* LEFT PANEL: 3D Spheres & Welcome */}
+            <section className="card-welcome-panel">
+              <div className="sphere-layer">
+                <div className="sphere-3d-upper" />
+                <div className="sphere-3d-main" />
+                <div className="sphere-3d-left" />
+              </div>
 
-          {/* Right Form Panel */}
-          <section className="form-panel">
-            {view === 'login' && (
-              <LoginCard
-                prefilledEmail={prefilledEmail}
-                userAccounts={userAccounts}
-                onForgotPassword={(em) => {
-                  setPrefilledEmail(em);
-                  setView('forgot-password');
-                }}
-                onToast={addToast}
-              />
-            )}
+              <div className="welcome-content">
+                <h2 className="welcome-title">WELCOME</h2>
+                <div className="welcome-headline">YOUR HEADLINE NAME</div>
+                <p className="welcome-desc">
+                  Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim quis nostrud exerci tation
+                </p>
+              </div>
+            </section>
 
-            {view === 'forgot-password' && (
-              <ForgotPasswordFlow
-                initialEmail={prefilledEmail}
-                onBackToLogin={(em) => {
-                  setPrefilledEmail(em);
-                  setView('login');
-                }}
-                activeOtp={activeOtp}
-                setActiveOtp={setActiveOtp}
-                onPasswordResetDone={handlePasswordResetDone}
-                onToast={addToast}
-              />
-            )}
-          </section>
+            {/* RIGHT PANEL: Form */}
+            <section className="card-form-panel">
+              <div className="card-decor-orb-bottom-right" />
 
-          {/* Toasts */}
+              {view === 'login' && (
+                <LoginCard
+                  prefilledEmail={prefilledEmail}
+                  userAccounts={userAccounts}
+                  onForgotPassword={(em) => {
+                    setPrefilledEmail(em);
+                    setStep(1);
+                    setView('forgot-password');
+                  }}
+                  onToast={addToast}
+                />
+              )}
+
+              {view === 'forgot-password' && (
+                <div style={{ position: 'relative', zIndex: 2 }}>
+                  {/* Stepper Progress */}
+                  <div className="stepper-row">
+                    <div className="stepper-bg-bar" />
+                    <div className="stepper-fill-bar" style={{ width: `${((step - 1) / 3) * 100}%` }} />
+                    {['Email', 'Verify', 'Reset', 'Done'].map((lbl, idx) => (
+                      <div key={idx} className={`step-node-item ${step === idx + 1 ? 'active' : ''} ${step > idx + 1 ? 'completed' : ''}`}>
+                        <div className="step-circle-badge">
+                          {step > idx + 1 ? '✓' : idx + 1}
+                        </div>
+                        <span className="step-title-text">{lbl}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {step === 1 && (
+                    <EmailStep
+                      email={prefilledEmail}
+                      setEmail={setPrefilledEmail}
+                      onNext={(em) => {
+                        setPrefilledEmail(em);
+                        const code = generateRandomOtp();
+                        setActiveOtp(code);
+                        sendOtpViaEmailJS({ toEmail: em, otpCode: code });
+                        addToast({
+                          type: 'info',
+                          title: 'OTP Code Generated',
+                          message: `Verification code ${code} sent to ${em}`
+                        });
+                        setStep(2);
+                      }}
+                      onBackToLogin={() => setView('login')}
+                      onToast={addToast}
+                    />
+                  )}
+
+                  {step === 2 && (
+                    <OtpStep
+                      email={prefilledEmail}
+                      expectedOtp={activeOtp}
+                      onVerifySuccess={() => setStep(3)}
+                      onResendOtp={() => {
+                        const newCode = generateRandomOtp();
+                        setActiveOtp(newCode);
+                        sendOtpViaEmailJS({ toEmail: prefilledEmail, otpCode: newCode });
+                        addToast({
+                          type: 'info',
+                          title: 'New OTP Dispatched',
+                          message: `New code ${newCode} dispatched.`
+                        });
+                        return newCode;
+                      }}
+                      onEditEmail={() => setStep(1)}
+                      onToast={addToast}
+                    />
+                  )}
+
+                  {step === 3 && (
+                    <ResetPasswordStep
+                      email={prefilledEmail}
+                      onResetSuccess={(newPass) => {
+                        handlePasswordResetDone(prefilledEmail, newPass);
+                        setStep(4);
+                      }}
+                      onToast={addToast}
+                    />
+                  )}
+
+                  {step === 4 && (
+                    <SuccessStep
+                      email={prefilledEmail}
+                      onBackToLogin={() => setView('login')}
+                    />
+                  )}
+                </div>
+              )}
+            </section>
+          </div>
+
+          {/* Toast notifications */}
           <div className="toast-container">
             {toasts.map((t) => (
               <div key={t.id} className="toast-box" onClick={() => removeToast(t.id)}>
                 <strong>{t.title}</strong>
-                {t.message && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{t.message}</div>}
+                {t.message && <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>{t.message}</div>}
               </div>
             ))}
           </div>
