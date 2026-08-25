@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Navbar from './components/layout/Navbar';
 import LoginCard from './components/auth/LoginCard';
 import ForgotPasswordFlow from './components/auth/ForgotPasswordFlow';
 import NotFound404 from './components/auth/NotFound404';
@@ -14,19 +13,13 @@ export default function App() {
   const [activeOtp, setActiveOtp] = useState('849201');
   const [isInboxModalOpen, setIsInboxModalOpen] = useState(false);
   const [userAccounts, setUserAccounts] = useState({
+    'admin@oneenterprise.com': 'admin123',
+    'hr@oneenterprise.com': 'hr12345',
     [DEMO_USER.email.toLowerCase()]: DEMO_USER.password
   });
-  const [toasts, setToasts] = useState([
-    {
-      id: 1,
-      type: 'info',
-      title: 'Welcome to Stackly Platform',
-      message: 'Enter your email to test login or password recovery.',
-      duration: 5000
-    }
-  ]);
+  const [toasts, setToasts] = useState([]);
 
-  const addToast = ({ type = 'info', title, message, duration = 5000 }) => {
+  const addToast = ({ type = 'info', title, message, duration = 4500 }) => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, type, title, message, duration }]);
   };
@@ -64,74 +57,43 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="split-container">
       {/* ==========================================================================
-          ANIMATED IT & CYBERSECURITY TECH BACKGROUND
+          LEFT SIDE: ROYAL BLUE HERO BANNER
           ========================================================================== */}
-      <div className="ambient-bg" aria-hidden="true">
-        {/* Animated Cyber Grid Matrix */}
-        <div className="tech-grid-overlay" />
-        
-        {/* Laser Scanner Beam */}
-        <div className="tech-laser-scanner" />
-
-        {/* Ambient Glowing Server Orbs */}
-        <div className="orb-1" />
-        <div className="orb-2" />
-        <div className="orb-3" />
-
-        {/* Floating IT & Cloud Security Tech Icons */}
-        <div className="floating-tech-icon tech-icon-1">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-            <line x1="6" y1="6" x2="6.01" y2="6" />
-            <line x1="6" y1="18" x2="6.01" y2="18" />
-          </svg>
+      <section className="hero-banner">
+        <div className="hero-waves">
+          <div className="hero-curve-1" />
+          <div className="hero-curve-2" />
         </div>
 
-        <div className="floating-tech-icon tech-icon-2">
-          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
+        <div className="hero-content">
+          <h1 className="hero-title">
+            Welcome back to One Enterprise!
+          </h1>
+          <p className="hero-subtitle">
+            Login and continue where you left off. You will be signed in based on your roles and permissions.
+          </p>
         </div>
+      </section>
 
-        <div className="floating-tech-icon tech-icon-3">
-          <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
-        </div>
+      {/* ==========================================================================
+          RIGHT SIDE: CLEAN WHITE FORM PANEL
+          ========================================================================== */}
+      <section className="form-panel">
+        {view === 'login' && (
+          <LoginCard
+            prefilledEmail={prefilledEmail}
+            userAccounts={userAccounts}
+            onForgotPassword={handleStartForgotPassword}
+            onNavigateTo404={handleNavigateTo404}
+            onLoginSuccess={(user) => {}}
+            onToast={addToast}
+          />
+        )}
 
-        <div className="floating-tech-icon tech-icon-4">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Clean Navbar with Official Stackly Logo */}
-      <Navbar
-        onResetView={() => setView('login')}
-        hasActiveOtp={view === 'forgot-password' && Boolean(activeOtp)}
-        onOpenInbox={() => setIsInboxModalOpen(true)}
-      />
-
-      {/* Centered Main Authentication Card */}
-      <main className="auth-wrapper">
-        <div className="auth-card-container">
-          {view === 'login' && (
-            <LoginCard
-              prefilledEmail={prefilledEmail}
-              userAccounts={userAccounts}
-              onForgotPassword={handleStartForgotPassword}
-              onNavigateTo404={handleNavigateTo404}
-              onLoginSuccess={(user) => {}}
-              onToast={addToast}
-            />
-          )}
-
-          {view === 'forgot-password' && (
+        {view === 'forgot-password' && (
+          <div className="form-wrapper">
             <ForgotPasswordFlow
               initialEmail={prefilledEmail}
               onBackToLogin={handleBackToLogin}
@@ -141,25 +103,27 @@ export default function App() {
               onPasswordResetDone={handlePasswordResetDone}
               onToast={addToast}
             />
-          )}
+          </div>
+        )}
 
-          {view === '404' && (
+        {view === '404' && (
+          <div className="form-wrapper">
             <NotFound404
               provider={oauthProvider}
               onBackToLogin={() => handleBackToLogin(prefilledEmail)}
             />
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+      </section>
 
-      {/* Toast Notification Container */}
+      {/* Toast Notifications */}
       <Toast toasts={toasts} onDismiss={removeToast} />
 
-      {/* Simulated Email Inbox Popup */}
+      {/* Simulated Email Modal */}
       <MockEmailModal
         isOpen={isInboxModalOpen}
         onClose={() => setIsInboxModalOpen(false)}
-        email={prefilledEmail || DEMO_USER.email}
+        email={prefilledEmail || 'admin@oneenterprise.com'}
         otpCode={activeOtp}
         onFillOtp={(code) => {
           addToast({
