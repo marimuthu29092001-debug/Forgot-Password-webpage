@@ -4,6 +4,7 @@ import ForgotPasswordFlow from './components/auth/ForgotPasswordFlow';
 import NotFound404 from './components/auth/NotFound404';
 import Toast from './components/common/Toast';
 import MockEmailModal from './components/common/MockEmailModal';
+import StacklyLogo from './components/common/StacklyLogo';
 import { DEMO_USER } from './utils/mockData';
 
 export default function App() {
@@ -75,6 +76,9 @@ export default function App() {
           </div>
 
           <div className="welcome-content">
+            <div className="welcome-logo-badge-row">
+              <StacklyLogo variant="light" size="medium" />
+            </div>
             <h2 className="welcome-title">WELCOME</h2>
             <div className="welcome-headline">YOUR HEADLINE NAME</div>
             <p className="welcome-desc">

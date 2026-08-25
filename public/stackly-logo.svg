@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" fill="none">
+  <!-- Stackly Dual Swoosh Ribbon Mark -->
+  <g id="stackly-ribbon-s" transform="translate(4, 3)">
+    <!-- Top Mint Swoosh -->
+    <path
+      d="M 18.5,3 C 13,4.5 4,13.5 4,23.5 C 4,31 9.5,35 17.5,35.5 C 14,32 12,27 13.5,21 C 15,14.5 20.5,9.5 28,7.5 C 24.5,4.5 21,3 18.5,3 Z"
+      fill="#70D6C4"
+    />
+    <!-- Bottom Navy Swoosh -->
+    <path
+      d="M 29.5,21 C 33.5,24.5 35.5,29.5 34,36 C 32.5,42.5 27,47.5 19.5,49.5 C 23,52.5 26.5,54 29.5,54 C 35,52.5 44,43.5 44,33.5 C 44,26 38.5,22 30.5,21.5 C 30.2,21.3 29.8,21.1 29.5,21 Z"
+      fill="#173354"
+    />
+  </g>
+  <!-- STACKLY Wordmark -->
+  <text
+    x="62"
+    y="38"
+    font-family="'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    font-size="28"
+    font-weight="800"
+    letter-spacing="2.5"
+    fill="#173354"
+  >
+    STACKLY
+  </text>
+</svg>
